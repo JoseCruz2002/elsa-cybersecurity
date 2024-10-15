@@ -1,7 +1,7 @@
 import json
 import os
 import models
-from models import DREBIN
+from models import MyModel
 from models.utils import *
 from evaluation import evaluate
 
@@ -15,19 +15,19 @@ if __name__ == "__main__":
     To classify the APK files, you can directly pass the list containing the
     file paths to `classifier.classify`.
     """
-    classifier = DREBIN(C=0.1)
+    classifier = MyModel()
 
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
 
     clf_path = os.path.join(
-        model_base_path, "pretrained/drebin_classifier.pkl")
+        model_base_path, "pretrained/MyModel_classifier.pkl")
     vect_path = os.path.join(
-        model_base_path, "pretrained/drebin_vectorizer.pkl")
+        model_base_path, "pretrained/MyModel_vectorizer.pkl")
 
     if os.path.exists(clf_path) and os.path.exists(vect_path):
         print("THERE ARE PRETRAINED MODELS!!!!!!!!!!!!!!!!")
-        classifier = DREBIN.load(vect_path, clf_path)
+        classifier = MyModel.load(vect_path, clf_path)
     else:
         print("THERE ARE NONONONONON PRETRAINED MODELS!!!!!!!!!!!!!!!!")
         features_tr = load_features(
@@ -41,6 +41,6 @@ if __name__ == "__main__":
     results = evaluate(classifier)
 
     with open(os.path.join(
-            base_path, "submissions/submission_drebin_track_1.json"),
+            base_path, "submissions/submission_MyModel_track_1.json"),
             "w") as f:
         json.dump(results, f)

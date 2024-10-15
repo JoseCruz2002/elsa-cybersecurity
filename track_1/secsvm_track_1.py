@@ -26,8 +26,10 @@ if __name__ == "__main__":
         model_base_path, "pretrained/secsvm_vectorizer.pkl")
 
     if os.path.exists(clf_path) and os.path.exists(vect_path):
+        print("THERE ARE PRETRAINED MODELS!!!!!!!!!!!!!!!!")
         classifier = SecSVM.load(vect_path, clf_path)
     else:
+        print("THERE ARE NONONONONON PRETRAINED MODELS!!!!!!!!!!!!!!!!")
         features_tr = load_features(
             os.path.join(base_path, "../data/training_set_features.zip"))
         y_tr = load_labels(
