@@ -29,28 +29,28 @@ def evaluate(classifier):
                 base_path, f"../data/test_set_adv_features.zip")),
             y_pred, scores)})
 
-#    attack = FeatureSpaceAttack(classifier=classifier,
-#                                logging_level=logging.INFO)
-#
-#    y_tr = load_labels(
-#        os.path.join(base_path, "../data/training_set_features.zip"),
-#        os.path.join(base_path, "../data/training_set.zip"))
-#
-#    for n_feats in [25, 50, 100]:
-#        goodware_features = (
-#            sample for sample, label in zip(load_features(
-#            os.path.join(base_path, "../data/training_set_features.zip")),
-#            y_tr) if label == 0)
-#        malware_features = load_features(
-#            os.path.join(base_path, "../data/test_set_adv_features.zip"))
-#        adv_examples = attack.run(
-#            malware_features, goodware_features, n_iterations=100,
-#            n_features=n_feats, n_candidates=50)
-#        y_pred, scores = classifier.predict(adv_examples)
-#        results.append({
-#            sha256: [int(y), float(s)] for sha256, y, s in zip(
-#                load_sha256_list(os.path.join(
-#                    base_path, f"../data/test_set_adv_features.zip")),
-#                y_pred, scores)})
-#
+    attack = FeatureSpaceAttack(classifier=classifier,
+                                logging_level=logging.INFO)
+
+    y_tr = load_labels(
+        os.path.join(base_path, "../data/training_set_features.zip"),
+        os.path.join(base_path, "../data/training_set.zip"))
+
+    for n_feats in [2, 5, 10]:
+        goodware_features = (
+            sample for sample, label in zip(load_features(
+            os.path.join(base_path, "../data/training_set_features.zip")),
+            y_tr) if label == 0)
+        malware_features = load_features(
+            os.path.join(base_path, "../data/test_set_adv_features.zip"))
+        adv_examples = attack.run(
+            malware_features, goodware_features, n_iterations=100,
+            n_features=n_feats, n_candidates=50)
+        y_pred, scores = classifier.predict(adv_examples)
+        results.append({
+            sha256: [int(y), float(s)] for sha256, y, s in zip(
+                load_sha256_list(os.path.join(
+                    base_path, f"../data/test_set_adv_features.zip")),
+                y_pred, scores)})
+
     return results
