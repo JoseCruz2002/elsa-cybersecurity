@@ -35,12 +35,13 @@ if __name__ == "__main__":
             accuracies = {}
             avg_scores = {}
             results_acc_scores = {}
-            count = 0
+            counts = {}
             for filename in os.listdir(submissions_path):
                 if filename == ".gitkeep":
                     continue
                 accuracies[filename.split(".")[0]] = 0
                 avg_scores[filename.split(".")[0]] = 0
+                count = 0
                 with open(os.path.join(submissions_path, filename), 'r') as f:
                     print("________________________", filename)
                     list = json.load(f)
@@ -55,10 +56,12 @@ if __name__ == "__main__":
                             avg_scores[filename.split(".")[0]] += test[sha256][1]
                             count += 1
                             print(f"count = {count}")
-            for model in accuracies:
-                results_acc_scores[model] = [accuracies[model] / count]
-            for model in avg_scores:
-                results_acc_scores[model] += [avg_scores[model] / count]
+                counts[filename.split(".")[0]] = count
+                results_acc_scores[filename.split(".")[0]] = [accuracies[filename.split(".")[0]] / count]
+                results_acc_scores[filename.split(".")[0]] += [avg_scores[filename.split(".")[0]] / count]
+    
+    for model in counts:
+        print(f"count for model {model}: {counts[model]}")
 
     with open(comparison_path, 'w') as f:
         json.dump(results, f)

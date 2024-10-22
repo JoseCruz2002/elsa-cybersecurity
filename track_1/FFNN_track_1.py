@@ -27,6 +27,7 @@ if __name__ == "__main__":
     if os.path.exists(clf_path) and os.path.exists(vect_path):
         print("THERE ARE PRETRAINED MODELS!!!!!!!!!!!!!!!!")
         classifier = classifier.load(vect_path, clf_path)
+        classifier.set_input_features(features_tr)
     else:
         print("THERE ARE NONONONONON PRETRAINED MODELS!!!!!!!!!!!!!!!!")
         classifier.fit(features_tr, y_tr)
