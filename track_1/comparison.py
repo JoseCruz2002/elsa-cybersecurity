@@ -114,7 +114,7 @@ def calculate_metrics(all_subs:dict):
 
 def create_confusion_matrices(metrics):
 
-    results_dir_path = os.path.join(os.path.dirname(__file__), "results/")
+    results_dir_path = os.path.join(os.path.dirname(__file__), "results/conf_matrices")
 
     for model in metrics:
         for test in metrics[model]:
