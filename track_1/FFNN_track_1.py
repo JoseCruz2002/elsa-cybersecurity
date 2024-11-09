@@ -11,10 +11,12 @@ if __name__ == "__main__":
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
 
+    model_variation = "_ratioed_data"
+
     clf_path = os.path.join(
-        model_base_path, "pretrained/FFNN_classifier.pth")
+        model_base_path, f"pretrained/FFNN{model_variation}_classifier.pth")
     vect_path = os.path.join(
-        model_base_path, "pretrained/FFNN_vectorizer.pkl")
+        model_base_path, f"pretrained/FFNN{model_variation}_vectorizer.pkl")
     
     features_tr = load_features(
             os.path.join(base_path, "../data/training_set_features.zip"))
@@ -36,7 +38,7 @@ if __name__ == "__main__":
     results = evaluate(classifier)
 
     with open(os.path.join(
-            base_path, "submissions/submission_FFNN_track_1.json"),
+            base_path, f"submissions/submission_FFNN{model_variation}_track_1.json"),
             "w") as f:
         json.dump(results, f)
     
