@@ -11,7 +11,8 @@ if __name__ == "__main__":
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
 
-    model_variation = "_ratioed_data"
+    model_variation = "_CEL_weights"
+    print(f"FFNN{model_variation}_classifier.pth")
 
     clf_path = os.path.join(
         model_base_path, f"pretrained/FFNN{model_variation}_classifier.pth")

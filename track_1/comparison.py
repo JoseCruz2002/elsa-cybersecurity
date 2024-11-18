@@ -45,7 +45,7 @@ def join_all_submissions():
     for filename in os.listdir(submissions_path):
         if filename == ".gitkeep" or "pretty" in filename:
             continue
-        model_name = filename.split(".")[0]
+        model_name = filename.split(".")[0][11:]
         all_subs[model_name] = {}
         with open(os.path.join(submissions_path, filename), 'r') as f:
             print("________________________", filename)
@@ -144,7 +144,7 @@ def calculate_metrics(all_subs:dict):
 
 def create_no_attack_confusion_matrices(metrics):
 
-    conf_matrices_dir_path = "/home/josecruz2002/Documents/Thesis/elsa-cybersecurity/track_1/results/conf_matrices/"
+    conf_matrices_dir_path = os.path.join(os.path.dirname(__file__), "results/conf_matrices/")
 
     for model in metrics:
         test_info = metrics[model][TEST_JOIN]
@@ -179,9 +179,9 @@ def create_no_attack_confusion_matrices(metrics):
 
 def create_attack_confusion_matrices(metrics):
     
-    conf_matrices_dir_path = "/home/josecruz2002/Documents/Thesis/elsa-cybersecurity/track_1/results/conf_matrices/"
+    conf_matrices_dir_path = os.path.join(os.path.dirname(__file__), "results/conf_matrices/")
 
-    rows, cols = len(metrics), 1
+    rows, cols = len(metrics)-1, 1
     fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 5 * rows), squeeze=False)
 
     i = 0
@@ -220,7 +220,98 @@ def create_attack_confusion_matrices(metrics):
         i += 1
     
     plt.tight_layout()
-    plt.savefig(f"{conf_matrices_dir_path}feature_space_attack_results_evolution_comparison.png", 
+    plt.savefig(f"{conf_matrices_dir_path}feature_space_attack_results_evolution_conf_matrices.png", 
+                dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def create_attack_bar_plots(metrics):
+
+    plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
+
+    rows, cols = len(metrics) - 1, 1
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 5 * rows), squeeze=False)
+
+    i = 0
+    for model in metrics:
+        row, col = i, 0
+        ax = axs[row, col]
+        if TEST_3 not in metrics[model]:
+            continue
+        fsa_2 = metrics[model][TEST_3]
+        fsa_5 = metrics[model][TEST_4]
+        fsa_10 = metrics[model][TEST_5]
+
+        x_labels = ["fsa_2", "fsa_5", "fsa_10"]
+        values = np.array([fsa_2["Accuracy"], fsa_5["Accuracy"], fsa_10["Accuracy"]])
+        ax.bar(x_labels, values)
+        ax.set_title(f"Feature space attack results evolution for {model} ", fontsize=18)
+
+        i += 1
+
+    plt.tight_layout()
+    plt.savefig(f"{plots_path}feature_space_attack_results_evolution_bar_plots.png", 
+                dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def create_no_attack_scatter_plot(metrics : dict):
+
+    plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
+
+    fig, axs = plt.subplots()
+
+    for (name, model) in metrics.items():
+        axs.scatter(x=model[TEST_JOIN]["Precision"], y=model[TEST_JOIN]["Recall"], label=name)
+
+    axs.legend(bbox_to_anchor=(1.05, 1))
+    axs.grid(True)
+    
+    axs.set_title("Precision/Recall comparison on no_attack tests")
+    axs.set_xlabel("Precision")
+    axs.set_ylabel("Recall")
+
+    plt.savefig(f"{plots_path}precision-recall_comparison_no_attack_tests.png", 
+                dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+def create_attack_unique_bar_plot(metrics):
+
+    plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
+
+    categories = ["fsa_2", "fsa_5", "fsa_10"]
+    bar_width = 0.5
+
+    results_per_category = [[], [], []]
+    for (_, model) in metrics.items():
+        if TEST_3 not in model or model[TEST_3]["Accuracy"] == 0:
+            continue
+        y = [model[TEST_3]["Accuracy"], model[TEST_4]["Accuracy"], model[TEST_5]["Accuracy"]]
+        results_per_category[0] += [y[0]]
+        results_per_category[1] += [y[1]]
+        results_per_category[2] += [y[2]]
+    for i in range(len(results_per_category)):
+        results_per_category[i].sort(reverse=True)
+
+    fig, ax = plt.subplots()
+    i = 0
+    for (name, model) in metrics.items():
+        if TEST_3 not in model or model[TEST_3]["Accuracy"] == 0:
+            continue
+        y = [results_per_category[0][i], results_per_category[1][i], results_per_category[2][i]]
+        ax.bar(categories, y, bar_width, label=name, bottom=0)
+        i += 1
+
+    ax.legend(bbox_to_anchor=(1.05, 1))
+    ax.set_ylim(0, 1)
+
+    ax.set_title("Feature_Space_Attacks accuracy comparison")
+    ax.set_xlabel("Number of features attacked")
+    ax.set_ylabel("Accuracy")
+
+    plt.tight_layout()
+    plt.savefig(f"{plots_path}feature_space_attack_results_comparison_bar.png", 
                 dpi=300, bbox_inches="tight")
     plt.close()
 
@@ -230,5 +321,8 @@ if __name__ == "__main__":
     #comparison_tests()
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
-    #create_no_attack_confusion_matrices(metrics)
+    create_no_attack_confusion_matrices(metrics)
+    create_no_attack_scatter_plot(metrics)
     create_attack_confusion_matrices(metrics)
+    create_attack_bar_plots(metrics)
+    create_attack_unique_bar_plot(metrics)
