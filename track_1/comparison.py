@@ -15,6 +15,24 @@ TEST_3 = "feature_space_attack_2"
 TEST_4 = "feature_space_attack_5"
 TEST_5 = "feature_space_attack_10"
 
+color_map = {
+    "FFNN_dense_track_1": "#FF5733",
+    "FFNN_ratioed_track_1": "#33FF57",
+    "drebin_track_1": "#3357FF",
+    "FFNN_CEL_weights_track_1": "#FF33A8",
+    "FFNN_small_CEL_weights_track_1": "#A833FF",
+    "secsvm_track_1": "#33FFF6",
+    "FFNN_dropout_track_1": "#FFD133",
+    "FFNN_small_track_1": "#FF7F33",
+    "FFNN_dense_small_ratioed_track_1": "#85FF33",
+    "FFNN_track_1": "#33FF85",
+    "FFNN_dense_ratioed_track_1": "#33A8FF",
+    "FFNN_small_dense_CEL_track_1": "#FF3333",
+    "FFNN_softmax_fix_track_1": "#33FF33",
+    "FFNN_only_mal_track_1": "#3333FF",
+    "MyModel_track_1": "#FFAA33"
+}
+
 def submission_tests():
     submission_path = os.path.join(os.path.dirname(__file__), "submissions/submission_drebin_track_1.json")
     with open(submission_path, "r") as f:
@@ -27,6 +45,20 @@ def comparison_tests():
     with open(comparison_path, "r") as f:
         comp = json.load(f)
         print(f"len(comp) = {len(comp)}")
+
+def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2):
+    aux_test_index = {TEST_2: 0, TEST_3: 1, TEST_4: 2, TEST_5: 3} 
+    res = []
+    aux = {}
+    exceptions = ("no_attack_good_and_malware", "no_attack_goodware_apks")
+    for (name, model) in metrics.items():
+        if TEST_3 in model:
+            aux[name] = list(test["Accuracy"] for (noun, test) in model.items() if noun not in exceptions)
+    order_test_idx = aux_test_index[test_to_order_by]
+    for (name, results) in sorted(aux.items(), key=lambda kv: kv[1][order_test_idx], reverse=reverse):
+        if results[0] not in (0.0, 1.0):
+            res += [(name, results)]
+    return res
 
 
 def join_all_submissions():
@@ -48,7 +80,6 @@ def join_all_submissions():
         model_name = filename.split(".")[0][11:]
         all_subs[model_name] = {}
         with open(os.path.join(submissions_path, filename), 'r') as f:
-            print("________________________", filename)
             list = json.load(f)
             i = 0
             for test in list: # test is a dictionary with as many keys as shas
@@ -236,15 +267,17 @@ def create_attack_bar_plots(metrics):
     for model in metrics:
         row, col = i, 0
         ax = axs[row, col]
-        if TEST_3 not in metrics[model]:
+        if TEST_3 not in metrics[model] or metrics[model][TEST_3]["Accuracy"] == 0:
             continue
+        no_attack = metrics[model][TEST_2]
         fsa_2 = metrics[model][TEST_3]
         fsa_5 = metrics[model][TEST_4]
         fsa_10 = metrics[model][TEST_5]
 
-        x_labels = ["fsa_2", "fsa_5", "fsa_10"]
-        values = np.array([fsa_2["Accuracy"], fsa_5["Accuracy"], fsa_10["Accuracy"]])
+        x_labels = ["no_attack", "fsa_2", "fsa_5", "fsa_10"]
+        values = np.array([no_attack["Accuracy"], fsa_2["Accuracy"], fsa_5["Accuracy"], fsa_10["Accuracy"]])
         ax.bar(x_labels, values)
+        ax.set_ylim(0, 1)
         ax.set_title(f"Feature space attack results evolution for {model} ", fontsize=18)
 
         i += 1
@@ -262,7 +295,8 @@ def create_no_attack_scatter_plot(metrics : dict):
     fig, axs = plt.subplots()
 
     for (name, model) in metrics.items():
-        axs.scatter(x=model[TEST_JOIN]["Precision"], y=model[TEST_JOIN]["Recall"], label=name)
+        axs.scatter(x=model[TEST_JOIN]["Precision"], y=model[TEST_JOIN]["Recall"],
+                    label=name, c=color_map[name])
 
     axs.legend(bbox_to_anchor=(1.05, 1))
     axs.grid(True)
@@ -280,28 +314,14 @@ def create_attack_unique_bar_plot(metrics):
 
     plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
 
-    categories = ["fsa_2", "fsa_5", "fsa_10"]
+    categories = ["no_attack", "fsa_2", "fsa_5", "fsa_10"]
     bar_width = 0.5
 
-    results_per_category = [[], [], []]
-    for (_, model) in metrics.items():
-        if TEST_3 not in model or model[TEST_3]["Accuracy"] == 0:
-            continue
-        y = [model[TEST_3]["Accuracy"], model[TEST_4]["Accuracy"], model[TEST_5]["Accuracy"]]
-        results_per_category[0] += [y[0]]
-        results_per_category[1] += [y[1]]
-        results_per_category[2] += [y[2]]
-    for i in range(len(results_per_category)):
-        results_per_category[i].sort(reverse=True)
+    results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_5)
 
     fig, ax = plt.subplots()
-    i = 0
-    for (name, model) in metrics.items():
-        if TEST_3 not in model or model[TEST_3]["Accuracy"] == 0:
-            continue
-        y = [results_per_category[0][i], results_per_category[1][i], results_per_category[2][i]]
-        ax.bar(categories, y, bar_width, label=name, bottom=0)
-        i += 1
+    for (name, values) in results:
+        ax.bar(categories, values, bar_width, label=name, bottom=0, color=color_map[name])
 
     ax.legend(bbox_to_anchor=(1.05, 1))
     ax.set_ylim(0, 1)
@@ -316,13 +336,47 @@ def create_attack_unique_bar_plot(metrics):
     plt.close()
 
 
+def create_no_attack_F1_measures(metrics):
+    
+    def F1_Measure(model_joint_results):
+        precision = model_joint_results["Precision"]
+        recall = model_joint_results["Recall"]
+        if precision == recall == 0:
+            return 0
+        return round(2 * ((precision * recall) / (precision + recall)), 3)
+
+    plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
+
+    categories = list(model_names for model_names in metrics.keys())
+    values = list(F1_Measure(model[TEST_JOIN]) for (_, model) in metrics.items())
+
+    bars = plt.barh(categories, values)
+    plt.bar_label(bars)
+    plt.xlim(0, 1)
+
+    plt.title("No_Attack F1-Measure comparison")
+    plt.ylabel("Name of the model")
+    plt.xlabel("F1-Measure")
+
+    plt.tight_layout()
+    plt.savefig(f"{plots_path}no_attack_f1-measure_comparison_bar.png", 
+                dpi=300, bbox_inches="tight")
+    plt.close()
+
+
 if __name__ == "__main__":
     #submission_tests()
     #comparison_tests()
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
-    create_no_attack_confusion_matrices(metrics)
-    create_no_attack_scatter_plot(metrics)
-    create_attack_confusion_matrices(metrics)
-    create_attack_bar_plots(metrics)
-    create_attack_unique_bar_plot(metrics)
+
+    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5):
+        print(f"{name}: {''.join(list(' ' for _ in range(34-len(name))))} {values}")
+
+    #create_no_attack_confusion_matrices(metrics)
+    #create_no_attack_scatter_plot(metrics)
+    #create_no_attack_F1_measures(metrics)
+
+    #create_attack_confusion_matrices(metrics)
+    #create_attack_bar_plots(metrics)
+    #create_attack_unique_bar_plot(metrics)
