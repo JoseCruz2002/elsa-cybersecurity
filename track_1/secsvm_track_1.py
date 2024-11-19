@@ -42,6 +42,6 @@ if __name__ == "__main__":
 
 
     with open(os.path.join(
-            base_path, "submissions/submission_secsvm_track_1.json"),
+            base_path, "submissions/submission_secsvm_big_fsa_eval_track_1.json"),
             "w") as f:
         json.dump(results, f)

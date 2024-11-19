@@ -11,7 +11,7 @@ if __name__ == "__main__":
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
 
-    model_variation = "_CEL_weights"
+    model_variation = "_small_CEL_weights"
     print(f"FFNN{model_variation}_classifier.pth")
 
     clf_path = os.path.join(
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     results = evaluate(classifier)
 
     with open(os.path.join(
-            base_path, f"submissions/submission_FFNN{model_variation}_track_1.json"),
+            base_path, f"submissions/submission_FFNN{model_variation}_big_fsa_eval_track_1.json"),
             "w") as f:
         json.dump(results, f)
     
