@@ -14,6 +14,9 @@ TEST_2 = "no_attack_malware_apks"
 TEST_3 = "feature_space_attack_2"
 TEST_4 = "feature_space_attack_5"
 TEST_5 = "feature_space_attack_10"
+TEST_BIG_1 = "feature_space_attack_15"
+TEST_BIG_2 = "feature_space_attack_20"
+TEST_BIG_3 = "feature_space_attack_25"
 
 color_map = {
     "FFNN_dense_track_1": "#FF5733",
@@ -47,12 +50,13 @@ def comparison_tests():
         print(f"len(comp) = {len(comp)}")
 
 def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2):
-    aux_test_index = {TEST_2: 0, TEST_3: 1, TEST_4: 2, TEST_5: 3} 
+    aux_test_index = {TEST_2: 0, TEST_3: 1, TEST_4: 2, TEST_5: 3,
+                      TEST_BIG_1: 4, TEST_BIG_1: 5, TEST_BIG_1: 6} 
     res = []
     aux = {}
     exceptions = ("no_attack_good_and_malware", "no_attack_goodware_apks")
     for (name, model) in metrics.items():
-        if TEST_3 in model:
+        if test_to_order_by in model:
             aux[name] = list(test["Accuracy"] for (noun, test) in model.items() if noun not in exceptions)
     order_test_idx = aux_test_index[test_to_order_by]
     for (name, results) in sorted(aux.items(), key=lambda kv: kv[1][order_test_idx], reverse=reverse):
@@ -63,12 +67,18 @@ def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2):
 
 def join_all_submissions():
 
-    test_names = {0: TEST_1, # no attack during the test in the goodware test set
-                  1: TEST_2, # no attack during the test in the malware test set
-                  2: TEST_3, # attacked and modified 2 features
-                  3: TEST_4, # attacked and modified 5 features
-                  4: TEST_5 # attacked and modified 10 features
-                  }
+    test_names = {
+        0: TEST_1, # no attack during the test in the goodware test set
+        1: TEST_2, # no attack during the test in the malware test set
+        2: TEST_3, # attacked and modified 2 features
+        3: TEST_4, # attacked and modified 5 features
+        4: TEST_5  # attacked and modified 10 features
+    }
+    big_test_names = {
+        0: TEST_BIG_1, # attacked and modified 15 features
+        1: TEST_BIG_2, # attacked and modified 20 features
+        2: TEST_BIG_3  # attacked and modified 25 features
+    }
 
     submissions_path = os.path.join(os.path.dirname(__file__), "submissions/")
 
@@ -78,13 +88,15 @@ def join_all_submissions():
         if filename == ".gitkeep" or "pretty" in filename:
             continue
         model_name = filename.split(".")[0][11:]
-        all_subs[model_name] = {}
+        model_name = model_name if "big_fsa_eval" not in filename else model_name.replace("_big_fsa_eval", "")
+        all_subs[model_name] = {} if model_name not in all_subs else all_subs[model_name]
         with open(os.path.join(submissions_path, filename), 'r') as f:
             list = json.load(f)
             i = 0
             for test in list: # test is a dictionary with as many keys as shas
-                all_subs[model_name][test_names[i]] = {}
-                aux = all_subs[model_name][test_names[i]]
+                names_to_use = big_test_names if "big_fsa_eval" in filename else test_names 
+                all_subs[model_name][names_to_use[i]] = {}
+                aux = all_subs[model_name][names_to_use[i]]
                 for sha256 in test:
                     if sha256 in aux:
                         aux[sha256] += test[sha256]
@@ -100,7 +112,7 @@ def join_all_submissions():
 
 def prediction_correct(pred_class, test):
 
-    mal = [TEST_2, TEST_3, TEST_4, TEST_5]
+    mal = [TEST_2, TEST_3, TEST_4, TEST_5, TEST_BIG_1, TEST_BIG_2, TEST_BIG_3]
     good = [TEST_1]
 
     return (pred_class == 0 and test in good) or \
@@ -160,11 +172,17 @@ def calculate_metrics(all_subs:dict):
             TEST_2: results_aux[model][TEST_2],
             TEST_3: results_aux[model][TEST_3],
             TEST_4: results_aux[model][TEST_4],
-            TEST_5: results_aux[model][TEST_5]
-        } if TEST_3 in results_aux[model] else {
+            TEST_5: results_aux[model][TEST_5],
+            TEST_BIG_1: results_aux[model][TEST_BIG_1],
+            TEST_BIG_2: results_aux[model][TEST_BIG_2],
+            TEST_BIG_3: results_aux[model][TEST_BIG_3],
+        } if TEST_BIG_1 in results_aux[model] else {
             TEST_JOIN: results_aux[model][TEST_JOIN],
             TEST_1: results_aux[model][TEST_1],
-            TEST_2: results_aux[model][TEST_2]
+            TEST_2: results_aux[model][TEST_2],
+            TEST_3: results_aux[model][TEST_3],
+            TEST_4: results_aux[model][TEST_4],
+            TEST_5: results_aux[model][TEST_5]
         }
 
     with open(results_path, "w") as f:
@@ -363,6 +381,32 @@ def create_no_attack_F1_measures(metrics):
                 dpi=300, bbox_inches="tight")
     plt.close()
 
+def create_big_attack_unique_bar_plot(metrics):
+
+    plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
+
+    categories = ["no_attack", "fsa_2", "fsa_5", "fsa_10",
+                  "fsa_15", "fsa_20", "fsa_25"]
+    bar_width = 0.5
+
+    results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_BIG_1)
+
+    fig, ax = plt.subplots()
+    for (name, values) in results:
+        ax.bar(categories, values, bar_width, label=name, bottom=0, color=color_map[name])
+
+    ax.legend(bbox_to_anchor=(1.05, 1))
+    ax.set_ylim(0, 1)
+
+    ax.set_title("Big Feature_Space_Attacks accuracy comparison")
+    ax.set_xlabel("Number of features attacked")
+    ax.set_ylabel("Accuracy")
+
+    plt.tight_layout()
+    plt.savefig(f"{plots_path}big_feature_space_attack_results_comparison_bar.png", 
+                dpi=300, bbox_inches="tight")
+    plt.close()
+
 
 if __name__ == "__main__":
     #submission_tests()
@@ -380,3 +424,4 @@ if __name__ == "__main__":
     #create_attack_confusion_matrices(metrics)
     #create_attack_bar_plots(metrics)
     #create_attack_unique_bar_plot(metrics)
+    create_big_attack_unique_bar_plot(metrics)
