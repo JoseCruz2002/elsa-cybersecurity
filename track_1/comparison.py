@@ -33,7 +33,8 @@ color_map = {
     "FFNN_small_dense_CEL_track_1": "#FF3333",
     "FFNN_softmax_fix_track_1": "#33FF33",
     "FFNN_only_mal_track_1": "#3333FF",
-    "MyModel_track_1": "#FFAA33"
+    "MyModel_track_1": "#FFAA33",
+    "FFNN_small_CEL_02-08_weights_track_1": "#D45B0F"
 }
 
 def submission_tests():
@@ -49,7 +50,7 @@ def comparison_tests():
         comp = json.load(f)
         print(f"len(comp) = {len(comp)}")
 
-def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2):
+def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2, remove_big_tests=True):
     aux_test_index = {TEST_2: 0, TEST_3: 1, TEST_4: 2, TEST_5: 3,
                       TEST_BIG_1: 4, TEST_BIG_1: 5, TEST_BIG_1: 6} 
     res = []
@@ -61,6 +62,7 @@ def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2):
     order_test_idx = aux_test_index[test_to_order_by]
     for (name, results) in sorted(aux.items(), key=lambda kv: kv[1][order_test_idx], reverse=reverse):
         if results[0] not in (0.0, 1.0):
+            results = results if not remove_big_tests else results[:4]
             res += [(name, results)]
     return res
 
@@ -230,7 +232,7 @@ def create_attack_confusion_matrices(metrics):
     
     conf_matrices_dir_path = os.path.join(os.path.dirname(__file__), "results/conf_matrices/")
 
-    rows, cols = len(metrics)-1, 1
+    rows, cols = len(metrics), 1
     fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 5 * rows), squeeze=False)
 
     i = 0
@@ -389,7 +391,8 @@ def create_big_attack_unique_bar_plot(metrics):
                   "fsa_15", "fsa_20", "fsa_25"]
     bar_width = 0.5
 
-    results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_BIG_1)
+    results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_BIG_1,
+                                      remove_big_tests=False)
 
     fig, ax = plt.subplots()
     for (name, values) in results:
@@ -414,14 +417,14 @@ if __name__ == "__main__":
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
 
-    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5):
-        print(f"{name}: {''.join(list(' ' for _ in range(34-len(name))))} {values}")
+    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
+        print(f"{name}: {''.join(list(' ' for _ in range(37-len(name))))} {values}")
 
-    #create_no_attack_confusion_matrices(metrics)
-    #create_no_attack_scatter_plot(metrics)
-    #create_no_attack_F1_measures(metrics)
+    create_no_attack_confusion_matrices(metrics)
+    create_no_attack_scatter_plot(metrics)
+    create_no_attack_F1_measures(metrics)
 
-    #create_attack_confusion_matrices(metrics)
-    #create_attack_bar_plots(metrics)
-    #create_attack_unique_bar_plot(metrics)
+    create_attack_confusion_matrices(metrics)
+    create_attack_bar_plots(metrics)
+    create_attack_unique_bar_plot(metrics)
     create_big_attack_unique_bar_plot(metrics)
