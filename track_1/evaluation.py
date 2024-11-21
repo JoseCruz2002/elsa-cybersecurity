@@ -4,7 +4,7 @@ import os
 import logging
 
 
-def evaluate(classifier):
+def evaluate(classifier, min_thresh):
     base_path = os.path.join(os.path.dirname(__file__))
 
     results = []
@@ -29,7 +29,7 @@ def evaluate(classifier):
                 base_path, f"../data/test_set_adv_features.zip")),
             y_pred, scores)})
 
-    attack = FeatureSpaceAttack(classifier=classifier,
+    attack = FeatureSpaceAttack(classifier=classifier, best_fitness_min_thresh=min_thresh,
                                 logging_level=logging.INFO)
 
     y_tr = load_labels(

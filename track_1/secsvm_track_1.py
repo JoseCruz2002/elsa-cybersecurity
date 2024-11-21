@@ -38,7 +38,7 @@ if __name__ == "__main__":
         classifier.fit(features_tr, y_tr)
         classifier.save(vect_path, clf_path)
 
-    results = evaluate(classifier)
+    results = evaluate(classifier, min_thresh=0)
 
 
     with open(os.path.join(

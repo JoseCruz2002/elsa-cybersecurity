@@ -49,7 +49,7 @@ def perform_attack(classifier, attack, y_tr, num_feats_to_attack, num_samples_to
         os.path.join(base_path, "../data/test_set_adv_features.zip")),
         num_samples_to_attack)
     adv_examples = attack.run(
-        malware_features, goodware_features, n_iterations=1,
+        malware_features, goodware_features, n_iterations=100,
         n_features=num_feats_to_attack, n_candidates=50)
     y_pred, scores = classifier.predict(adv_examples)
     results = ({
@@ -120,7 +120,8 @@ def main(model_choices):
     print(f"The initial model accuracy is: {no_attack_acc}")
 
     results = {}
-    attack = FeatureSpaceAttack(classifier=classifier,
+    min_thresh = 0 if opt.classifier in ("drebin", "secsvm") else 0.5
+    attack = FeatureSpaceAttack(classifier=classifier, best_fitness_min_thresh=min_thresh,
                                 logging_level=logging.INFO)
     y_tr = load_labels(
         os.path.join(base_path, "../data/training_set_features.zip"),

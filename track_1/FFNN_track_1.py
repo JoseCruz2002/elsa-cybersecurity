@@ -25,7 +25,7 @@ if __name__ == "__main__":
         os.path.join(base_path, "../data/training_set_features.zip"),
         os.path.join(base_path, "../data/training_set.zip"))
     
-    classifier = FFNN(features_tr, hidden_size=10, layers=2)
+    classifier = FFNN(hidden_size=10, layers=2, features=features_tr)
     
     if os.path.exists(clf_path) and os.path.exists(vect_path):
         print("THERE ARE PRETRAINED MODELS!!!!!!!!!!!!!!!!")
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         classifier.fit(features_tr, y_tr)
         classifier.save(vect_path, clf_path)
 
-    results = evaluate(classifier)
+    results = evaluate(classifier, min_thresh=0.5)
 
     with open(os.path.join(
             base_path, f"submissions/submission_FFNN{model_variation}_track_1.json"),

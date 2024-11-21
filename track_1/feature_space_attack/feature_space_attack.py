@@ -40,7 +40,7 @@ class FeatureSpaceAttack:
     if it can be removed the index will be negative.
     """
 
-    def __init__(self, classifier, logging_level=logging.INFO):
+    def __init__(self, classifier, best_fitness_min_thresh, logging_level=logging.INFO):
         """
 
         Parameters
@@ -52,6 +52,7 @@ class FeatureSpaceAttack:
         """
 
         self.clf = classifier
+        self.best_fitness_min_thresh = best_fitness_min_thresh
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging_level)
 
@@ -183,7 +184,7 @@ class FeatureSpaceAttack:
                 self.logger.debug(
                     f"Generation {g + 1} - score {best_fitness}")
                 # early stop
-                if best_fitness < 0:
+                if best_fitness < self.best_fitness_min_thresh: # 0.5 to FFNN and 0 for drebin and secsvm
                     return target_adv + unused_features
             g += 1
 
