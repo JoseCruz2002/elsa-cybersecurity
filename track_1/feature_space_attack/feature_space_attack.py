@@ -56,6 +56,8 @@ class FeatureSpaceAttack:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging_level)
 
+        self.logger.info(f"best_fitness_min_thresh = {self.best_fitness_min_thresh}")
+
         # Private attributes
         self._pop = None
         self._toolbox = None

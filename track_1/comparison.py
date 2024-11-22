@@ -19,22 +19,23 @@ TEST_BIG_2 = "feature_space_attack_20"
 TEST_BIG_3 = "feature_space_attack_25"
 
 color_map = {
-    "FFNN_dense_track_1": "#FF5733",
-    "FFNN_ratioed_track_1": "#33FF57",
     "drebin_track_1": "#3357FF",
-    "FFNN_CEL_weights_track_1": "#FF33A8",
-    "FFNN_small_CEL_weights_track_1": "#A833FF",
-    "secsvm_track_1": "#33FFF6",
-    "FFNN_dropout_track_1": "#FFD133",
-    "FFNN_small_track_1": "#FF7F33",
-    "FFNN_dense_small_ratioed_track_1": "#85FF33",
-    "FFNN_track_1": "#33FF85",
-    "FFNN_dense_ratioed_track_1": "#33A8FF",
-    "FFNN_small_dense_CEL_track_1": "#FF3333",
-    "FFNN_softmax_fix_track_1": "#33FF33",
-    "FFNN_only_mal_track_1": "#3333FF",
+    "FFNN_normal_big___track_1": "#33FF85",
+    "FFNN_normal_big__dense_track_1": "#FF5733",
+    "FFNN_normal_big_CEL0109__track_1": "#FF33A8",
+    "FFNN_normal_small___track_1": "#FF7F33",
+    "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
+    "FFNN_normal_small_CEL0109__track_1": "#A833FF",
+    "FFNN_normal_small_CEL0109_dense_track_1": "#FF3333",
+    "FFNN_normal_small_CEL0208__track_1": "#D45B0F",
+    "FFNN_ratioed_big___track_1": "#33FF57",
+    "FFNN_ratioed_big__dense_track_1": "#33A8FF",
+    "FFNN_ratioed_small__dense_track_1": "#85FF33",
     "MyModel_track_1": "#FFAA33",
-    "FFNN_small_CEL_02-08_weights_track_1": "#D45B0F"
+    "secsvm_track_1": "#33FFF6",
+    #"FFNN_dropout_track_1": "#FFD133",
+    #"FFNN_softmax_fix_track_1": "#33FF33",
+    #"FFNN_only_mal_track_1": "#3333FF",
 }
 
 def submission_tests():
@@ -49,6 +50,20 @@ def comparison_tests():
     with open(comparison_path, "r") as f:
         comp = json.load(f)
         print(f"len(comp) = {len(comp)}")
+
+def scores_test(model_name):
+    submission_path = os.path.join(os.path.dirname(__file__), f"submissions/submission_{model_name}.json")
+    with open(submission_path, "r") as f:
+        sub = json.load(f)
+        valid = True
+        for test in sub:
+            for (apk_sha, [pred, score]) in test.items():
+                print(score)
+                if not (score >= 0 and score <= 1):
+                    valid = False
+                    print(score)
+    print(f"Are all the scores between 0 and 1? -> {valid}")
+
 
 def order_models_robustness(metrics, reverse=False, test_to_order_by=TEST_2, remove_big_tests=True):
     aux_test_index = {TEST_2: 0, TEST_3: 1, TEST_4: 2, TEST_5: 3,
@@ -87,7 +102,8 @@ def join_all_submissions():
     all_subs = {}
     filenames = os.listdir(submissions_path).sort()
     for filename in os.listdir(submissions_path):
-        if filename == ".gitkeep" or "pretty" in filename:
+        if filename in (".gitkeep", "not_relevant", "before_pred_and_fsa_correct")\
+                    or "pretty" in filename:
             continue
         model_name = filename.split(".")[0][11:]
         model_name = model_name if "big_fsa_eval" not in filename else model_name.replace("_big_fsa_eval", "")
@@ -168,24 +184,33 @@ def calculate_metrics(all_subs:dict):
             "Score": (goodware_test["Score"] * 5000 + malware_test["Score"] * 1250) / 6250
         }
         # order the tests on each model
-        results[model] = {
-            TEST_JOIN: results_aux[model][TEST_JOIN],
-            TEST_1: results_aux[model][TEST_1],
-            TEST_2: results_aux[model][TEST_2],
-            TEST_3: results_aux[model][TEST_3],
-            TEST_4: results_aux[model][TEST_4],
-            TEST_5: results_aux[model][TEST_5],
-            TEST_BIG_1: results_aux[model][TEST_BIG_1],
-            TEST_BIG_2: results_aux[model][TEST_BIG_2],
-            TEST_BIG_3: results_aux[model][TEST_BIG_3],
-        } if TEST_BIG_1 in results_aux[model] else {
-            TEST_JOIN: results_aux[model][TEST_JOIN],
-            TEST_1: results_aux[model][TEST_1],
-            TEST_2: results_aux[model][TEST_2],
-            TEST_3: results_aux[model][TEST_3],
-            TEST_4: results_aux[model][TEST_4],
-            TEST_5: results_aux[model][TEST_5]
-        }
+        if TEST_BIG_1 in results_aux[model]:
+            results[model] = {
+                TEST_JOIN: results_aux[model][TEST_JOIN],
+                TEST_1: results_aux[model][TEST_1],
+                TEST_2: results_aux[model][TEST_2],
+                TEST_3: results_aux[model][TEST_3],
+                TEST_4: results_aux[model][TEST_4],
+                TEST_5: results_aux[model][TEST_5],
+                TEST_BIG_1: results_aux[model][TEST_BIG_1],
+                TEST_BIG_2: results_aux[model][TEST_BIG_2],
+                TEST_BIG_3: results_aux[model][TEST_BIG_3]
+            }
+        elif TEST_3 in results_aux[model]:
+            results[model] = {
+                TEST_JOIN: results_aux[model][TEST_JOIN],
+                TEST_1: results_aux[model][TEST_1],
+                TEST_2: results_aux[model][TEST_2],
+                TEST_3: results_aux[model][TEST_3],
+                TEST_4: results_aux[model][TEST_4],
+                TEST_5: results_aux[model][TEST_5]
+            }
+        else:
+            results[model] = {
+                TEST_JOIN: results_aux[model][TEST_JOIN],
+                TEST_1: results_aux[model][TEST_1],
+                TEST_2: results_aux[model][TEST_2]
+            }
 
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
@@ -334,7 +359,7 @@ def create_attack_unique_bar_plot(metrics):
 
     plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
 
-    categories = ["no_attack", "fsa_2", "fsa_5", "fsa_10"]
+    categories = ["no_atck", "fsa_2", "fsa_5", "fsa_10"]
     bar_width = 0.5
 
     results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_5)
@@ -414,11 +439,14 @@ def create_big_attack_unique_bar_plot(metrics):
 if __name__ == "__main__":
     #submission_tests()
     #comparison_tests()
+    #scores_test("FFNN_normal_small_CEL0109__track_1")
+
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
 
-    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
-        print(f"{name}: {''.join(list(' ' for _ in range(37-len(name))))} {values}")
+    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_2, remove_big_tests=False):
+        print(f"{name}: {''.join(list(' ' for _ in range(45-len(name))))} {values}")
+
 
     create_no_attack_confusion_matrices(metrics)
     create_no_attack_scatter_plot(metrics)
