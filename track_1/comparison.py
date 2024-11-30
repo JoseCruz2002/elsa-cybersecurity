@@ -305,7 +305,7 @@ def create_attack_bar_plots(metrics):
 
     plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
 
-    rows, cols = len(metrics) - 1, 1
+    rows, cols = len(metrics), 1
     fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 5 * rows), squeeze=False)
 
     i = 0
@@ -392,10 +392,10 @@ def create_no_attack_F1_measures(metrics):
 
     plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
 
-    categories = list(model_names for model_names in metrics.keys())
-    values = list(F1_Measure(model[TEST_JOIN]) for (_, model) in metrics.items())
+    values = dict((name, F1_Measure(model[TEST_JOIN])) for (name, model) in metrics.items())
+    values = dict(sorted(values.items(), key=lambda kv: kv[1]))
 
-    bars = plt.barh(categories, values)
+    bars = plt.barh(list(values.keys()), list(values.values()))
     plt.bar_label(bars)
     plt.xlim(0, 1)
 
@@ -444,7 +444,7 @@ if __name__ == "__main__":
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
 
-    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_2, remove_big_tests=False):
+    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
         print(f"{name}: {''.join(list(' ' for _ in range(45-len(name))))} {values}")
 
 
