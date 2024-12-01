@@ -37,6 +37,7 @@ def evaluate(classifier, min_thresh):
         os.path.join(base_path, "../data/training_set.zip"))
 
     for n_feats in [2, 5, 10]:
+        print(f"Evaluation, manipulating {n_feats} features!")
         goodware_features = (
             sample for sample, label in zip(load_features(
             os.path.join(base_path, "../data/training_set_features.zip")),

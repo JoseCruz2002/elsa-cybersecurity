@@ -21,3 +21,5 @@ python track_1/incr_evaluation.py -classifier FFNN_small_CEL_weights -num_feats_
 
 python track_1/adv_training.py -classifier "FFNN_normal_small_CEL0109_" -adv_mode "genetic" -n_feats 5 -n_good_samples 2 -n_mal_samples 2
 python track_1/adv_training.py -classifier "FFNN_normal_small_CEL0109_" -adv_mode "genetic" -n_feats 5 -n_good_samples 10000 -n_mal_samples 1000
+
+python track_1/FFNN_track_1.py -training normal -structure small -use_CEL True -CEL_weight_pos_class 0.1 -CEL_weight_neg_class 0.9 -adv_mode "genetic" -n_feats 5 -n_good_samples 10000 -n_mal_samples 1000

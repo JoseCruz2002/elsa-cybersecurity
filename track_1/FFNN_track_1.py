@@ -17,6 +17,12 @@ if __name__ == "__main__":
     parser.add_argument("-CEL_weight_pos_class", default=0.1, type=float)
     parser.add_argument("-CEL_weight_neg_class", default=0.9, type=float)
     parser.add_argument("-dense", default=False, type=bool)
+    parser.add_argument("-adv_mode", choices=["genetic", "naive", ""], 
+                        default="genetic",
+                        help="How the samples manipulation should be performed")
+    parser.add_argument("-n_feats", default=5, type=int)
+    parser.add_argument("-n_good_samples", default=67500, type=int)
+    parser.add_argument("-n_mal_samples", default=7500, type=int)
     parser.add_argument("-sub_addition", default="",
                         help="When want to do a special submission")
     opt = parser.parse_args()
@@ -26,7 +32,11 @@ if __name__ == "__main__":
             use_CEL:   {opt.use_CEL}\n\
                 CEL_weight_pos_class: {opt.CEL_weight_pos_class}\n\
                 CEL_weight_neg_class: {opt.CEL_weight_neg_class}\n\
-            dense:     {opt.dense}")
+            dense:     {opt.dense}\n\
+            adv_mode: {opt.adv_mode}\n\
+                n_feats: {opt.n_feats}\n\
+                n_good_samples: {opt.n_good_samples}\n\
+                n_mal_samples: {opt.n_mal_samples}")
 
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
@@ -35,6 +45,9 @@ if __name__ == "__main__":
                 str(opt.CEL_weight_neg_class).replace(".", "") if opt.use_CEL else ""
     dense_str = "dense" if opt.dense else ""
     model_variation = f"_{opt.training}_{opt.structure}_{CEL_str}_{dense_str}"
+    if opt.adv_mode != "":
+        model_variation += \
+            f"_adv-{opt.adv_mode}-Over-{opt.n_good_samples}-{opt.n_mal_samples}-{opt.n_feats}"  
 
     clf_path = os.path.join(
         model_base_path, f"pretrained/FFNN{model_variation}_classifier.pth")
@@ -68,9 +81,7 @@ if __name__ == "__main__":
 
     results = evaluate(classifier, min_thresh=0.5)
 
-    with open(os.path.join(
-            base_path, submission_path),
-            "w") as f:
+    with open(os.path.join(base_path, submission_path),"w") as f:
         json.dump(results, f)
     
     

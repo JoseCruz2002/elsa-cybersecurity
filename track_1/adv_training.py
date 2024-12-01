@@ -1,10 +1,13 @@
 import os
 import logging
 import argparse
+import ast
 import itertools
 import numpy
+import json
 
 from feature_space_attack import FeatureSpaceAttack
+from evaluation import evaluate
 import models
 from models.utils import *
 from models import FFNN, MyModel, DREBIN, SecSVM
@@ -47,12 +50,9 @@ def parse_model(classifier_str: str):
     return (classifier, clf_path, vect_path)
 
 
-def adv_training_over_existing_model(classifier, clf_path, vect_path, X, attack,
-                                     adv_mode, n_feats, n_good_samples, n_mal_samples):
-
-    classifier.load(vect_path, clf_path)
-    classifier.set_input_features(features=X)
-
+def generate_adv_samples(attack, adv_mode, n_mal_samples, n_good_samples, n_feats,
+                         adv_samples_path):
+ 
     goodware_samples = load_samples_features(
                 os.path.join(base_path, "../data/training_set_features.zip"),
                 os.path.join(base_path, "../data/training_set.zip"), 0)
@@ -60,20 +60,28 @@ def adv_training_over_existing_model(classifier, clf_path, vect_path, X, attack,
                 os.path.join(base_path, "../data/training_set_features.zip"),
                 os.path.join(base_path, "../data/training_set.zip"), 1)
 
-    adv_examples = attack.run(
+    if adv_mode == "genetic":
+        adv_examples = attack.run(
             itertools.islice(malware_samples, n_mal_samples), 
             itertools.islice(goodware_samples, n_good_samples),
             n_iterations=100, n_features=n_feats, n_candidates=50)
-    
-    adv_ex_file = f"adv_examples_{n_good_samples}-{n_mal_samples}_{n_feats}.txt"
-    with open(os.path.join(base_path, adv_ex_file), "w") as f:
-        f.write(str(adv_examples))
 
-    classifier.fit(adv_examples, numpy.ones(len(adv_examples)))
+    with open(adv_samples_path, "w") as f:
+        f.write(str(adv_examples))
+    
+    return adv_examples
+
+
+def adv_training_over_existing_model(classifier, clf_path, vect_path, X, adv_samples,
+                                     adv_mode, n_good_samples, n_mal_samples, n_feats):
+
+    classifier.load(vect_path, clf_path)
+
+    classifier.fit(adv_samples, numpy.ones(len(adv_samples)), fit=False)
     
     aux_name = classifier.toString() + f"_adv-{adv_mode}-Over-{n_good_samples}-{n_mal_samples}-{n_feats}"
-    new_vect_path = os.path.join(base_path, f"../android_detectors/pretrained/{aux_name}_vectorizer.pkl")
-    new_clf_path = os.path.join(base_path, f"../android_detectors/pretrained/{aux_name}_classifier.pth")
+    new_vect_path = os.path.join(base_path, f"../android-detectors/pretrained/{aux_name}_vectorizer.pkl")
+    new_clf_path = os.path.join(base_path, f"../android-detectors/pretrained/{aux_name}_classifier.pth")
     classifier.save(new_vect_path, new_clf_path)
 
 
@@ -101,33 +109,46 @@ def main(model_choices: list[str]):
             n_mal_samples: {opt.n_mal_samples}")
     
     classifier, clf_path, vect_path = parse_model(opt.classifier)
+    aux = f"adv_samples_{opt.n_good_samples}-{opt.n_mal_samples}_{opt.n_feats}.txt"
+    adv_samples_path = os.path.join(base_path, aux)
 
     features_tr = load_features(
             os.path.join(base_path, "../data/training_set_features.zip"))
-    y_tr = load_labels(
-        os.path.join(base_path, "../data/training_set_features.zip"),
-        os.path.join(base_path, "../data/training_set.zip"))
+    
+    min_thresh = 0 if opt.classifier in ("drebin", "secsvm") else 0.5
 
-    if opt.adv_mode == "genetic":
-        min_thresh = 0 if opt.classifier in ("drebin", "secsvm") else 0.5
-        attack = FeatureSpaceAttack(classifier=classifier, best_fitness_min_thresh=min_thresh,
-                                    logging_level=logging.INFO)
+    # Aversarial Samples generation
+    if os.path.exists(adv_samples_path):
+        print(f"Adversarial samples already exist - {adv_samples_path}")
+        with open(adv_samples_path, "r") as f:
+            aux = f.read()
+        adv_samples = ast.literal_eval(aux)
     else:
-        print(f"This adversarial mode: {opt.adv_mode} is not yet implemented!")
-        return
-
+        if opt.adv_mode == "genetic":
+            if "FFNN" in opt.classifier:
+                classifier.set_input_features(features_tr)
+            attack = FeatureSpaceAttack(classifier=classifier, best_fitness_min_thresh=min_thresh,
+                                        logging_level=logging.INFO)
+        else:
+            print(f"This adversarial mode: {opt.adv_mode} is not yet implemented!")
+            return
+        print(f"Generating adversarial samples to save in - {adv_samples_path}")
+        adv_samples = generate_adv_samples(attack, opt.adv_mode, opt.n_mal_samples,
+                                           opt.n_good_samples, opt.n_feats,
+                                           adv_samples_path)
+    # Adversarial training
     if os.path.exists(clf_path) and os.path.exists(vect_path):
         print(f"Performing adversarial training on existing model {opt.classifier}")
-        adv_training_over_existing_model(classifier, clf_path, vect_path, X=features_tr,
-                                         attack=attack, adv_mode=opt.adv_mode,
-                                         n_feats=opt.n_feats, 
-                                         n_good_samples=opt.n_good_samples,
-                                         n_mal_samples=opt.n_mal_samples)
+        adv_training_over_existing_model(classifier, clf_path, vect_path, features_tr,
+                                         adv_samples, opt.adv_mode, opt.n_good_samples,
+                                         opt.n_mal_samples, opt.n_feats)
     else:
         print(f"Performing adversarial training on new model {opt.classifier}")
+        y_tr = load_labels(
+                os.path.join(base_path, "../data/training_set_features.zip"),
+                os.path.join(base_path, "../data/training_set.zip"))
         adv_training_from_zero(classifier, clf_path, vect_path, attack,
                                features_tr, y_tr)
-
 
 if __name__ == "__main__":
 
