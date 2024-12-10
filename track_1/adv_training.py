@@ -67,17 +67,17 @@ def generate_adv_samples(attack, adv_mode, n_mal_samples, n_good_samples, n_feat
             n_iterations=100, n_features=n_feats, n_candidates=50)
 
     with open(adv_samples_path, "w") as f:
-        f.write(str(adv_examples))
+        samples = list(itertools.islice(goodware_samples, n_good_samples)) + adv_examples
+        f.write(str(samples))
     
-    return adv_examples
+    return samples
 
 
-def adv_training_over_existing_model(classifier, clf_path, vect_path, X, adv_samples,
-                                     adv_mode, n_good_samples, n_mal_samples, n_feats):
+def adv_training_over_existing_model(classifier, adv_samples, adv_mode, n_good_samples, 
+                                     n_mal_samples, n_feats):
 
-    classifier.load(vect_path, clf_path)
-
-    classifier.fit(adv_samples, numpy.ones(len(adv_samples)), fit=False)
+    labels = numpy.concatenate(numpy.zeros(n_good_samples), numpy.ones(n_mal_samples))
+    classifier.fit(adv_samples, labels, fit=False)
     
     aux_name = classifier.toString() + f"_adv-{adv_mode}-Over-{n_good_samples}-{n_mal_samples}-{n_feats}"
     new_vect_path = os.path.join(base_path, f"../android-detectors/pretrained/{aux_name}_vectorizer.pkl")
@@ -108,13 +108,17 @@ def main(model_choices: list[str]):
             n_good_samples: {opt.n_good_samples}\n\
             n_mal_samples: {opt.n_mal_samples}")
     
+    features_tr = load_features(
+            os.path.join(base_path, "../data/training_set_features.zip"))
+
     classifier, clf_path, vect_path = parse_model(opt.classifier)
+    classifier.load(vect_path, clf_path)
+    if "FFNN" in opt.classifier:
+                classifier.set_input_features(features_tr)
+
     aux = f"adv_samples_{opt.n_good_samples}-{opt.n_mal_samples}_{opt.n_feats}.txt"
     adv_samples_path = os.path.join(base_path, aux)
 
-    features_tr = load_features(
-            os.path.join(base_path, "../data/training_set_features.zip"))
-    
     min_thresh = 0 if opt.classifier in ("drebin", "secsvm") else 0.5
 
     # Aversarial Samples generation
@@ -125,8 +129,6 @@ def main(model_choices: list[str]):
         adv_samples = ast.literal_eval(aux)
     else:
         if opt.adv_mode == "genetic":
-            if "FFNN" in opt.classifier:
-                classifier.set_input_features(features_tr)
             attack = FeatureSpaceAttack(classifier=classifier, best_fitness_min_thresh=min_thresh,
                                         logging_level=logging.INFO)
         else:
@@ -139,9 +141,9 @@ def main(model_choices: list[str]):
     # Adversarial training
     if os.path.exists(clf_path) and os.path.exists(vect_path):
         print(f"Performing adversarial training on existing model {opt.classifier}")
-        adv_training_over_existing_model(classifier, clf_path, vect_path, features_tr,
-                                         adv_samples, opt.adv_mode, opt.n_good_samples,
-                                         opt.n_mal_samples, opt.n_feats)
+        adv_training_over_existing_model(classifier, adv_samples, opt.adv_mode,
+                                         opt.n_good_samples, opt.n_mal_samples,
+                                         opt.n_feats)
     else:
         print(f"Performing adversarial training on new model {opt.classifier}")
         y_tr = load_labels(

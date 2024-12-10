@@ -24,6 +24,8 @@ color_map = {
     "FFNN_normal_big__dense_track_1": "#FF5733",
     "FFNN_normal_big_CEL0109__track_1": "#FF33A8",
     "FFNN_normal_small___track_1": "#FF7F33",
+    "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-5_v1_track_1": "#435678",
+    "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_v1_track_1": "#8902AD",
     "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
     "FFNN_normal_small_CEL0109__track_1": "#A833FF",
     "FFNN_normal_small_CEL0109_dense_track_1": "#FF3333",
@@ -445,7 +447,7 @@ if __name__ == "__main__":
     metrics = calculate_metrics(all_subs)
 
     for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
-        print(f"{name}: {''.join(list(' ' for _ in range(45-len(name))))} {values}")
+        print(f"{name}: {''.join(list(' ' for _ in range(65-len(name))))} {values}")
 
 
     create_no_attack_confusion_matrices(metrics)
