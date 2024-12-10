@@ -76,7 +76,7 @@ def generate_adv_samples(attack, adv_mode, n_mal_samples, n_good_samples, n_feat
 def adv_training_over_existing_model(classifier, adv_samples, adv_mode, n_good_samples, 
                                      n_mal_samples, n_feats):
 
-    labels = numpy.concatenate(numpy.zeros(n_good_samples), numpy.ones(n_mal_samples))
+    labels = numpy.concatenate((numpy.zeros(n_good_samples), numpy.ones(n_mal_samples)))
     classifier.fit(adv_samples, labels, fit=False)
     
     aux_name = classifier.toString() + f"_adv-{adv_mode}-Over-{n_good_samples}-{n_mal_samples}-{n_feats}"
