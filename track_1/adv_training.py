@@ -12,6 +12,7 @@ import models
 from models.utils import *
 from models import FFNN, MyModel, DREBIN, SecSVM
 
+from sklearn.model_selection import train_test_split
 
 def parse_model(classifier_str: str):
     '''
@@ -77,7 +78,10 @@ def adv_training_over_existing_model(classifier, adv_samples, adv_mode, n_good_s
                                      n_mal_samples, n_feats):
 
     labels = numpy.concatenate((numpy.zeros(n_good_samples), numpy.ones(n_mal_samples)))
-    classifier.fit(adv_samples, labels, fit=False)
+    X, _, y, _ = train_test_split(adv_samples, labels, test_size=None, 
+                                  train_size=n_good_samples + n_mal_samples-1,
+                                  random_state=42)
+    classifier.fit(X, y, fit=False)
     
     aux_name = classifier.toString() + f"_adv-{adv_mode}-Over-{n_good_samples}-{n_mal_samples}-{n_feats}"
     new_vect_path = os.path.join(base_path, f"../android-detectors/pretrained/{aux_name}_vectorizer.pkl")
