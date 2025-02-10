@@ -35,7 +35,7 @@ def parse_model(classifier_str):
         hidden_size, layers = (10, 2) if "small" in classifier_str else (150, 3)
         classifier = FFNN(hidden_size=hidden_size, layers=layers)
     else:
-        print(f"Error: {classifier_str} does not exist!")
+        raise ValueError(f"Error: {classifier_str} does not exist!")
     return (classifier, clf_path, vect_path)
 
 

@@ -47,7 +47,7 @@ def parse_model(classifier_str: str):
                       CEL_weight_neg_class=cel_neg_class,
                       dense=dense, features=[])
     else:
-        print(f"Error: {classifier_str} does not exist!")
+        raise ValueError(f"Error: {classifier_str} does not exist!")
     return (classifier, clf_path, vect_path)
 
 

@@ -18,7 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("-CEL_weight_neg_class", default=0.9, type=float)
     parser.add_argument("-dense", default=False, type=bool)
     parser.add_argument("-adv_mode", choices=["genetic", "naive", ""], 
-                        default="genetic",
+                        default="",
                         help="How the samples manipulation should be performed")
     parser.add_argument("-n_feats", default=5, type=int)
     parser.add_argument("-n_good_samples", default=67500, type=int)

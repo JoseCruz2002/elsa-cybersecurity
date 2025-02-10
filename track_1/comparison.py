@@ -25,15 +25,19 @@ color_map = {
     "FFNN_normal_big_CEL0109__track_1": "#FF33A8",
     "FFNN_normal_small___track_1": "#FF7F33",
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-5_v1_track_1": "#435678",
+    "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-5_track_1": "#4F0691",
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_v1_track_1": "#8902AD",
+    "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_track_1": "#00A2FF",
     "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
     "FFNN_normal_small_CEL0109__track_1": "#A833FF",
     "FFNN_normal_small_CEL0109_dense_track_1": "#FF3333",
     "FFNN_normal_small_CEL0208__track_1": "#D45B0F",
+    "FFNN_normal_small_CEL0208__adv-genetic-Over-10000-1000-5_track_1": "#035438",
+    "FFNN_normal_small_CEL0208__adv-genetic-Over-10000-1000-10_track_1": "#421608",
     "FFNN_ratioed_big___track_1": "#33FF57",
     "FFNN_ratioed_big__dense_track_1": "#33A8FF",
     "FFNN_ratioed_small__dense_track_1": "#85FF33",
-    "MyModel_track_1": "#FFAA33",
+    "MLP_SKLearn_track_1": "#FFAA33",
     "secsvm_track_1": "#33FFF6",
     #"FFNN_dropout_track_1": "#FFD133",
     #"FFNN_softmax_fix_track_1": "#33FF33",
@@ -108,6 +112,8 @@ def join_all_submissions():
                     or "pretty" in filename:
             continue
         model_name = filename.split(".")[0][11:]
+        if "MyModel" in model_name:
+            model_name = model_name.replace("MyModel", "MLP_SKLearn")
         model_name = model_name if "big_fsa_eval" not in filename else model_name.replace("_big_fsa_eval", "")
         all_subs[model_name] = {} if model_name not in all_subs else all_subs[model_name]
         with open(os.path.join(submissions_path, filename), 'r') as f:
@@ -446,15 +452,15 @@ if __name__ == "__main__":
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
 
-    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
-        print(f"{name}: {''.join(list(' ' for _ in range(65-len(name))))} {values}")
+    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_2, remove_big_tests=False):
+        print(f"{name}: {''.join(list(' ' for _ in range(70-len(name))))} {values}")
 
 
-    create_no_attack_confusion_matrices(metrics)
-    create_no_attack_scatter_plot(metrics)
-    create_no_attack_F1_measures(metrics)
-
-    create_attack_confusion_matrices(metrics)
-    create_attack_bar_plots(metrics)
-    create_attack_unique_bar_plot(metrics)
-    create_big_attack_unique_bar_plot(metrics)
+    #create_no_attack_confusion_matrices(metrics)
+    #create_no_attack_scatter_plot(metrics)
+    #create_no_attack_F1_measures(metrics)
+#
+    #create_attack_confusion_matrices(metrics)
+    #create_attack_bar_plots(metrics)
+    #create_attack_unique_bar_plot(metrics)
+    #create_big_attack_unique_bar_plot(metrics)
