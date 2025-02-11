@@ -431,3 +431,6 @@ class FeatureSpaceAttack:
             The textual features corresponding to the input vector.
         """
         return [self.clf.input_features[i] for i in x]
+    
+    def type_of_attack(self):
+        return "genetic"

@@ -5,55 +5,16 @@ import ast
 import itertools
 import numpy
 import json
-
 from feature_space_attack import FeatureSpaceAttack
 from evaluation import evaluate
 import models
 from models.utils import *
-from models import FFNN, MyModel, DREBIN, SecSVM
-
 from sklearn.model_selection import train_test_split
 
-def parse_model(classifier_str: str):
-    '''
-    Returns a tuple of three elements:
-        The classifier
-        The path to the classifier
-        The path to the vectorizer
-    '''
-    print(f"parsing model {classifier_str}")
-
-    model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
-    file_extension = "pth" if "FFNN" in classifier_str else "pkl"
-    clf_path = os.path.join(model_base_path, f"pretrained/{classifier_str}_classifier.{file_extension}")
-    vect_path = os.path.join(model_base_path, f"pretrained/{classifier_str}_vectorizer.pkl")
-
-    if classifier_str == "MyModel":
-        classifier = MyModel()
-    elif classifier_str == "secsvm":
-        classifier = SecSVM(C=0.1, lb=-0.5, ub=0.5)
-    elif classifier_str == "drebin":
-        classifier = DREBIN(C=0.1)
-    elif "FFNN" in classifier_str:
-        aux = classifier_str.split("_")
-        training = aux[1]
-        structure = aux[2]
-        cel = True if "CEL" in classifier_str else False
-        cel_pos_class = float(aux[3][3:5])/10 if cel else 0
-        cel_neg_class = float(aux[3][5:])/10 if cel else 0
-        dense = True if "dense" in classifier_str else False
-        classifier = FFNN(training=training, structure=structure, use_CEL=cel,
-                      CEL_weight_pos_class=cel_pos_class, 
-                      CEL_weight_neg_class=cel_neg_class,
-                      dense=dense, features=[])
-    else:
-        raise ValueError(f"Error: {classifier_str} does not exist!")
-    return (classifier, clf_path, vect_path)
-
-
-def generate_adv_samples(attack, adv_mode, n_mal_samples, n_good_samples, n_feats,
-                         adv_samples_path):
- 
+def generate_adv_batch(attack, n_mal_samples, n_good_samples, n_feats):
+    """
+    Generate n_mal_samples, that have been manipulated using the specified attack 
+    """
     goodware_samples = load_samples_features(
                 os.path.join(base_path, "../data/training_set_features.zip"),
                 os.path.join(base_path, "../data/training_set.zip"), 0)
@@ -61,107 +22,116 @@ def generate_adv_samples(attack, adv_mode, n_mal_samples, n_good_samples, n_feat
                 os.path.join(base_path, "../data/training_set_features.zip"),
                 os.path.join(base_path, "../data/training_set.zip"), 1)
 
-    if adv_mode == "genetic":
-        adv_examples = attack.run(
-            itertools.islice(malware_samples, n_mal_samples), 
-            itertools.islice(goodware_samples, n_good_samples),
-            n_iterations=100, n_features=n_feats, n_candidates=50)
+    adv_examples = attack.run(
+        itertools.islice(malware_samples, n_mal_samples), 
+        itertools.islice(goodware_samples, n_good_samples),
+        n_iterations=100, n_features=n_feats, n_candidates=50)
 
-    with open(adv_samples_path, "w") as f:
-        samples = list(itertools.islice(goodware_samples, n_good_samples)) + adv_examples
-        f.write(str(samples))
-    
-    return samples
-
-
-def adv_training_over_existing_model(classifier, adv_samples, adv_mode, n_good_samples, 
-                                     n_mal_samples, n_feats):
-
+    adv_batch = list(itertools.islice(goodware_samples, n_good_samples)) + adv_examples
     labels = numpy.concatenate((numpy.zeros(n_good_samples), numpy.ones(n_mal_samples)))
-    X, _, y, _ = train_test_split(adv_samples, labels, test_size=None, 
+    # Randomize positions so that the good to malware ratio is maintained during training.
+    adv_X, _, adv_y, _ = train_test_split(adv_batch, labels, test_size=None, 
                                   train_size=n_good_samples + n_mal_samples-1,
                                   random_state=42)
-    classifier.fit(X, y, fit=False)
-    
-    aux_name = classifier.toString() + f"_adv-{adv_mode}-Over-{n_good_samples}-{n_mal_samples}-{n_feats}"
-    new_vect_path = os.path.join(base_path, f"../android-detectors/pretrained/{aux_name}_vectorizer.pkl")
-    new_clf_path = os.path.join(base_path, f"../android-detectors/pretrained/{aux_name}_classifier.pth")
-    classifier.save(new_vect_path, new_clf_path)
+    return (adv_X, adv_y)
 
+def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATratio,
+                         adv_examples_path):
+    """
+    Perform the adversarial training.
+    Arguments:
+        X: unaltered input
+        y: unaltered labels
+        classifier: The model on which to perform adversarial training
+        attack: The adversarial examples generator algortihm
+        step: Amount of samples in normal training between each AT iteration
+        ATsize: Size of AT iteration batch
+        ATratio: Ratio of good to malware samples of an AT iteration batch
+    """
+    X = classifier.vectorizer_fit(X, transform=True)
+    n_ATiterations = 75000 // step + (0 if 75000 % step == 0 else 1)
+    print(f"n_ATiterations: {n_ATiterations}")
+    for i in range(n_ATiterations):
+        X_sliced = X[i*step : step*(i+1)]
+        y_sliced = y[i*step : step*(i+1)]
+        print(f"shape of X_sliced: {X_sliced.shape}")
+        print(f"shape of y_sliced: {y_sliced.shape}")
+        # No need to transform, X_sliced already is encoded to a binary vector
+        classifier._fit(X_sliced, y_sliced)
+        adv_batch, adv_batch_labels = \
+                generate_adv_batch(attack, ATsize, ATratio*ATsize, n_feats)
+        with open(adv_examples_path, "a") as f:
+            json.dump({i: adv_batch}, f, indent=2)
+        # The vectorizer has already been fitted, still need to encode the samples
+        classifier.fit(adv_batch, adv_batch_labels, fit=False)
 
-def adv_training_from_zero(classifier, clf_path, vect_path, attack, X, y):
-    pass
-
-
-def main(model_choices: list[str]):
-
+def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-classifier", choices=model_choices,
-                        help="The model name to perform adversarial training")
-    parser.add_argument("-adv_mode", choices=["genetic", "naive"], 
-                        default="genetic",
-                        help="How the samples manipulation should be performed")
-    parser.add_argument("-n_feats", default=5, type=int)
-    parser.add_argument("-n_good_samples", default=67500, type=int)
-    parser.add_argument("-n_mal_samples", default=7500, type=int)
+    parser.add_argument("-classifier",
+                        help="The model on which to perform adversarial training")
+    parser.add_argument("-manipulation_algo", choices=["genetic", "naive"],
+                        help="The algorithm used for the adversarial examples generation")
+    parser.add_argument("-manipulation_degree", type=int,
+                        help="The degree of manipulation to create adversarial examples")
+    parser.add_argument("-step", type=int,
+                        help="Amount of samples in normal training between each AT iteration")
+    parser.add_argument("-ATsize", type=int,
+                        help="Size of AT iteration batch")
+    parser.add_argument("-ATratio", type=int,
+                        help="Ratio of good to malware samples of an AT iteration batch")
     opt = parser.parse_args()
     print(f"Input arguments to the program:\n\
-            classifier:  {opt.classifier}\n\
-            adv_mode: {opt.adv_mode}\n\
-            n_feats: {opt.n_feats}\n\
-            n_good_samples: {opt.n_good_samples}\n\
-            n_mal_samples: {opt.n_mal_samples}")
+            classifier: {opt.classifier}\n\
+            manipulation_algo : {opt.manipulation_algo}\n\
+            manipulation_degree : {opt.manipulation_degree}\n\
+            step: {opt.step}\n\
+            ATsize : {opt.ATsize}\n\
+            ATratio : {opt.ATratio}")
+
+    model_string = f"AT_{opt.classifier}_{opt.manipulation_algo}" +\
+                   f"_{opt.manipulation_degree}_{opt.step}_{opt.ATsize}_{opt.ATratio}"
+    adv_examples_path = os.path.join(base_path, f"adv_examples_for_AT/{model_string}.json")
+    clf_path = os.path.join(model_base_path, "pretrained/" +
+                            model_string + "_classifier" +
+                            (".pth" if "FFNN" in opt.classifier else ".pkl"))
+    vect_path = os.path.join(model_base_path, "pretrained/" +
+                             model_string + "_vectorizer.pkl")
+    submission_path = f"submissions/submission_{model_string}_track_1.json"
     
-    features_tr = load_features(
+    print(f"classifier_path:\n{clf_path}")
+    print(f"vectorizer_path:\n{vect_path}")
+    print(f"adv_examples_path:\n{adv_examples_path}")
+    print(f"submission_path:\n{submission_path}")
+
+    classifier, _, _ = parse_model(opt.classifier)
+    
+    if opt.manipulation_algo == "genetic":
+        min_thresh = 0 if ("drebin" in opt.classifier or
+                           "secsvm" in opt.classifier) else 0.5 
+        attack = FeatureSpaceAttack(classifier=classifier,
+                                    best_fitness_min_thresh=min_thresh,
+                                    logging_level=logging.INFO)
+
+    if (os.path.exists(clf_path) and os.path.exists(vect_path)):
+        print("THERE ARE PRETRAINED MODELS!!!!!!!!!!!!!!!!")
+        classifier.load(clf_path, vect_path)
+    else:
+        print("THERE ARE NONONONONON PRETRAINED MODELS!!!!!!!!!!!!!!!!")
+        features_tr = load_features(
             os.path.join(base_path, "../data/training_set_features.zip"))
-
-    classifier, clf_path, vect_path = parse_model(opt.classifier)
-    classifier.load(vect_path, clf_path)
-    if "FFNN" in opt.classifier:
-                classifier.set_input_features(features_tr)
-
-    aux = f"adv_samples_{opt.n_good_samples}-{opt.n_mal_samples}_{opt.n_feats}.txt"
-    adv_samples_path = os.path.join(base_path, aux)
-
-    min_thresh = 0 if opt.classifier in ("drebin", "secsvm") else 0.5
-
-    # Aversarial Samples generation
-    if os.path.exists(adv_samples_path):
-        print(f"Adversarial samples already exist - {adv_samples_path}")
-        with open(adv_samples_path, "r") as f:
-            aux = f.read()
-        adv_samples = ast.literal_eval(aux)
-    else:
-        if opt.adv_mode == "genetic":
-            attack = FeatureSpaceAttack(classifier=classifier, best_fitness_min_thresh=min_thresh,
-                                        logging_level=logging.INFO)
-        else:
-            print(f"This adversarial mode: {opt.adv_mode} is not yet implemented!")
-            return
-        print(f"Generating adversarial samples to save in - {adv_samples_path}")
-        adv_samples = generate_adv_samples(attack, opt.adv_mode, opt.n_mal_samples,
-                                           opt.n_good_samples, opt.n_feats,
-                                           adv_samples_path)
-    # Adversarial training
-    if os.path.exists(clf_path) and os.path.exists(vect_path):
-        print(f"Performing adversarial training on existing model {opt.classifier}")
-        adv_training_over_existing_model(classifier, adv_samples, opt.adv_mode,
-                                         opt.n_good_samples, opt.n_mal_samples,
-                                         opt.n_feats)
-    else:
-        print(f"Performing adversarial training on new model {opt.classifier}")
         y_tr = load_labels(
-                os.path.join(base_path, "../data/training_set_features.zip"),
-                os.path.join(base_path, "../data/training_set.zip"))
-        adv_training_from_zero(classifier, clf_path, vect_path, attack,
-                               features_tr, y_tr)
+            os.path.join(base_path, "../data/training_set_features.zip"),
+            os.path.join(base_path, "../data/training_set.zip"))
+        adversarial_training(features_tr, y_tr, classifier, attack, opt.manipulation_degree,
+                         opt.step, opt.ATsize, opt.ATratio, adv_examples_path)
+        classifier.save(clf_path, vect_path)
+    
+    results = evaluate(classifier, min_thresh=0)
+
+    with open(os.path.join(base_path, submission_path), "w") as f:
+        json.dump(results, f)
 
 if __name__ == "__main__":
-
     base_path = os.path.join(os.path.dirname(__file__))
-    filenames = os.listdir(os.path.join(os.path.dirname(__file__),
-                                        "../android-detectors/pretrained"))
-    aux = list(filter(lambda x: x != ".gitkeep" and "vector" not in x, filenames))
-    model_choices = list(map(lambda x: x[:-15], aux))
-
-    main(model_choices)
+    model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
+    main()
