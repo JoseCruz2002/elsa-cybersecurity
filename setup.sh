@@ -47,6 +47,8 @@ python track_1/drebin_track_1.py -feat_selection Univariate -selection_type perc
 python track_1/drebin_track_1.py -feat_selection Recursive -estimator SVR -param 60
 python track_1/drebin_track_1.py -feat_selection RecursiveCV -estimator SVR -param 60
 
+python track_1/drebin_track_1.py -feat_selection Sequential -estimator SVR -direction forward -param 2
+
 python track_1/FFNN_track_1.py -training normal -structure small -use_CEL True -CEL_weight_pos_class 0.1 -CEL_weight_neg_class 0.9 -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 10000
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------

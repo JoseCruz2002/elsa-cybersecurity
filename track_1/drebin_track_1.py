@@ -33,6 +33,8 @@ if __name__ == "__main__":
                         help="The function used for Univariate FS")
     parser.add_argument("-estimator", default="",
                         help="The estimator used for Recursive FS")
+    parser.add_argument("-direction", choices=["forward", "backward", ""],
+                        help="Direction of Sequential FS")
     parser.add_argument("-adv_mode", choices=["genetic", "naive", ""], 
                         default="",
                         help="How the samples manipulation should be performed")
@@ -43,11 +45,12 @@ if __name__ == "__main__":
                         help="When want to do a special submission")
     opt = parser.parse_args()
     print(f"Input arguments to the program:\n\
-            feature_selection:  {opt.feat_selection}\n\
+            feature_selection: {opt.feat_selection}\n\
                 param: {opt.param}\n\
                 selection_type: {opt.selection_type}\n\
                 selection_function: {opt.selection_function}\n\
-                estimator: {opt.estimator}")
+                estimator: {opt.estimator}\n\
+                direction: {opt.direction}")
 
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
@@ -57,7 +60,8 @@ if __name__ == "__main__":
         "param": opt.param,
         "selection_type": opt.selection_type,
         "selection_function": opt.selection_function,
-        "estimator": opt.estimator
+        "estimator": opt.estimator,
+        "direction": opt.direction
     }
     param_str = str(opt.param).replace('.', '') if opt.param < 1 else int(opt.param)
     model_variation = ""
@@ -69,6 +73,8 @@ if __name__ == "__main__":
             model_variation += f"-{opt.selection_type}-{opt.selection_function}-{param_str}"
         elif opt.feat_selection in ("Recursive", "RecursiveCV"):
             model_variation += f"-{opt.estimator}-{param_str}"
+        elif opt.feat_selection == "Sequential":
+            model_variation += f"-{opt.estimator}-{opt.direction}-{param_str}"
 
     if opt.adv_mode != "":
         model_variation += \
@@ -98,7 +104,7 @@ if __name__ == "__main__":
         if opt.feat_selection != "":
             classifier.fit(features_tr, y_tr, feat_sel=True, args=feat_selection_args)
             with open(os.path.join(base_path, 
-                                   f"selected_features/drebin{model_variation}.json"), "w") as f:
+                                   f"selected_features/{model_variation[1:]}.json"), "w") as f:
                 json.dump(classifier.input_features, f, indent=2)
         else:
             classifier.fit(features_tr, y_tr)
