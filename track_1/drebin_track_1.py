@@ -68,7 +68,8 @@ if __name__ == "__main__":
         elif opt.feat_selection == "Univariate":
             model_variation += f"-{opt.selection_type}-{opt.selection_function}-{param_str}"
         elif opt.feat_selection in ("Recursive", "RecursiveCV"):
-            model_variation += f"-{opt.estimator}-{opt.param}"
+            model_variation += f"-{opt.estimator}-{param_str}"
+
     if opt.adv_mode != "":
         model_variation += \
             f"_adv-{opt.adv_mode}-Over-{opt.n_good_samples}-{opt.n_mal_samples}-{opt.n_feats}"  

@@ -452,7 +452,7 @@ if __name__ == "__main__":
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
 
-    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_2, remove_big_tests=False):
+    for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
         print(f"{name}: {''.join(list(' ' for _ in range(70-len(name))))} {values}")
 
 
