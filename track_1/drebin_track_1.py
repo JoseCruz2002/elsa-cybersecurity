@@ -18,8 +18,8 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-feat_selection", choices=["Variance", "Univariate", "Recursive",
-                                                    "RecursiveCV", "L1-based",
-                                                    "Tree-based", "Sequential", ""],
+                                                    "RecursiveCV", "SelectFromModel",
+                                                    "Sequential", ""],
                         default="", type=str, required=True)
     parser.add_argument("-param", default=-1.0, type=float, required=False,
                         help="The parameter for feature selection")
@@ -72,6 +72,8 @@ if __name__ == "__main__":
         elif opt.feat_selection == "Univariate":
             model_variation += f"-{opt.selection_type}-{opt.selection_function}-{param_str}"
         elif opt.feat_selection in ("Recursive", "RecursiveCV"):
+            model_variation += f"-{opt.estimator}-{param_str}"
+        elif opt.feat_selection == "SelectFromModel":
             model_variation += f"-{opt.estimator}-{param_str}"
         elif opt.feat_selection == "Sequential":
             model_variation += f"-{opt.estimator}-{opt.direction}-{param_str}"
