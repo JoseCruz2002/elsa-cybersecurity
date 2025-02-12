@@ -17,8 +17,8 @@ if __name__ == "__main__":
     file paths to `classifier.classify`.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("-feat_selection", choices=["Variance", "Univariate",
-                                                    "Recursive", "L1-based",
+    parser.add_argument("-feat_selection", choices=["Variance", "Univariate", "Recursive",
+                                                    "RecursiveCV", "L1-based",
                                                     "Tree-based", "Sequential", ""],
                         default="", type=str, required=True)
     parser.add_argument("-param", default=-1.0, type=float, required=False,
@@ -31,6 +31,8 @@ if __name__ == "__main__":
                                                         'f_classif', ''],
                         default="",
                         help="The function used for Univariate FS")
+    parser.add_argument("-estimator", default="",
+                        help="The estimator used for Recursive FS")
     parser.add_argument("-adv_mode", choices=["genetic", "naive", ""], 
                         default="",
                         help="How the samples manipulation should be performed")
@@ -44,7 +46,8 @@ if __name__ == "__main__":
             feature_selection:  {opt.feat_selection}\n\
                 param: {opt.param}\n\
                 selection_type: {opt.selection_type}\n\
-                selection_function: {opt.selection_function}")
+                selection_function: {opt.selection_function}\n\
+                estimator: {opt.estimator}")
 
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
@@ -53,7 +56,8 @@ if __name__ == "__main__":
         "feat_selection": opt.feat_selection,
         "param": opt.param,
         "selection_type": opt.selection_type,
-        "selection_function": opt.selection_function
+        "selection_function": opt.selection_function,
+        "estimator": opt.estimator
     }
     param_str = str(opt.param).replace('.', '') if opt.param < 1 else int(opt.param)
     model_variation = ""
@@ -63,6 +67,8 @@ if __name__ == "__main__":
             model_variation += f"-{param_str}"
         elif opt.feat_selection == "Univariate":
             model_variation += f"-{opt.selection_type}-{opt.selection_function}-{param_str}"
+        elif opt.feat_selection in ("Recursive", "RecursiveCV"):
+            model_variation += f"-{opt.estimator}-{opt.param}"
     if opt.adv_mode != "":
         model_variation += \
             f"_adv-{opt.adv_mode}-Over-{opt.n_good_samples}-{opt.n_mal_samples}-{opt.n_feats}"  
