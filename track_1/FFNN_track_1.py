@@ -10,6 +10,7 @@ from evaluation import evaluate
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
+    # FFNN model hyperparameters
     parser.add_argument("-training", choices=["normal", "ratioed", "only_mal"],
                         default="normal")
     parser.add_argument("-structure", choices=["small", "big"], default="big")
@@ -17,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("-CEL_weight_pos_class", default=0.1, type=float)
     parser.add_argument("-CEL_weight_neg_class", default=0.9, type=float)
     parser.add_argument("-dense", default=False, type=bool)
+    # Feature Selection parameters
     parser.add_argument("-feat_selection", choices=["Variance", "Univariate", "Recursive",
                                                     "RecursiveCV", "L1-based",
                                                     "Tree-based", "Sequential", ""],
@@ -33,31 +35,54 @@ if __name__ == "__main__":
                         help="The function used for Univariate FS")
     parser.add_argument("-estimator", default="",
                         help="The estimator used for Recursive FS")
+    # Data augmentation (after training) parameters
     parser.add_argument("-adv_mode", choices=["genetic", "naive", ""], 
                         default="",
                         help="How the samples manipulation should be performed")
     parser.add_argument("-n_feats", default=0, type=int)
     parser.add_argument("-n_good_samples", default=0, type=int)
     parser.add_argument("-n_mal_samples", default=0, type=int)
+    # Adversarial Training parameters
+    parser.add_argument("-manipulation_algo", choices=["genetic", "naive", ""], default="",
+                        help="The algorithm used for the adversarial examples generation")
+    parser.add_argument("-manipulation_degree", type=int, default=-1,
+                        help="The degree of manipulation to create adversarial examples")
+    parser.add_argument("-step", type=int, default=-1,
+                        help="Amount of samples in normal training between each AT iteration")
+    parser.add_argument("-ATsize", type=int, default=-1,
+                        help="Size of AT iteration batch")
+    parser.add_argument("-ATratio", type=int, default=-1,
+                        help="Ratio of good to malware samples of an AT iteration batch")
+    # Submission parameters
     parser.add_argument("-sub_addition", default="",
                         help="When want to do a special submission")
     opt = parser.parse_args()
     print(f"Input arguments to the program:\n\
-            training:  {opt.training}\n\
-            structure: {opt.structure}\n\
-            use_CEL:   {opt.use_CEL}\n\
-                CEL_weight_pos_class: {opt.CEL_weight_pos_class}\n\
-                CEL_weight_neg_class: {opt.CEL_weight_neg_class}\n\
-            dense:     {opt.dense}\n\
-            feature_selection:  {opt.feat_selection}\n\
+            Model Hyperparameters:\n\
+                training:  {opt.training}\n\
+                structure: {opt.structure}\n\
+                use_CEL:   {opt.use_CEL}\n\
+                    CEL_weight_pos_class: {opt.CEL_weight_pos_class}\n\
+                    CEL_weight_neg_class: {opt.CEL_weight_neg_class}\n\
+                dense:     {opt.dense}\n\
+            Feature Selection parameters:\n\
+                feature_selection:  {opt.feat_selection}\n\
                 param: {opt.param}\n\
                 selection_type: {opt.selection_type}\n\
                 selection_function: {opt.selection_function}\n\
                 estimator: {opt.estimator}\n\
-            adv_mode: {opt.adv_mode}\n\
+            Data augmentation (after training) parameters:\n\
+                adv_mode: {opt.adv_mode}\n\
                 n_feats: {opt.n_feats}\n\
                 n_good_samples: {opt.n_good_samples}\n\
-                n_mal_samples: {opt.n_mal_samples}")
+                n_mal_samples: {opt.n_mal_samples}\n\
+            Adversarial Training parameters:
+                manipulation_algo : {opt.manipulation_algo}\n\
+                manipulation_degree : {opt.manipulation_degree}\n\
+                step: {opt.step}\n\
+                ATsize : {opt.ATsize}\n\
+                ATratio : {opt.ATratio}\n\
+            Submission parameters: {opt.sub_addition}")
 
     model_base_path = os.path.join(os.path.dirname(models.__file__), "../..")
     base_path = os.path.join(os.path.dirname(__file__))
@@ -67,13 +92,6 @@ if __name__ == "__main__":
     dense_str = "dense" if opt.dense else ""
     model_variation = f"_{opt.training}_{opt.structure}_{CEL_str}_{dense_str}"
 
-    feat_selection_args = {
-        "feat_selection": opt.feat_selection,
-        "param": opt.param,
-        "selection_type": opt.selection_type,
-        "selection_function": opt.selection_function,
-        "estimator": opt.estimator
-    }
     param_str = str(opt.param).replace('.', '') if opt.param < 1 else int(opt.param)
     fs = ""
     if opt.feat_selection != "":
@@ -84,11 +102,18 @@ if __name__ == "__main__":
             fs += f"-{opt.selection_type}-{opt.selection_function}-{param_str}"
         elif opt.feat_selection in ("Recursive", "RecursiveCV"):
             fs += f"-{opt.estimator}-{param_str}"
+        elif opt.feat_selection == "SelectFromModel":
+            model_variation += f"-{opt.estimator}-{param_str}"
+        elif opt.feat_selection == "Sequential":
+            model_variation += f"-{opt.estimator}-{opt.direction}-{param_str}"
     model_variation += f"_{fs}"
 
     if opt.adv_mode != "":
         model_variation += \
-            f"_adv-{opt.adv_mode}-Over-{opt.n_good_samples}-{opt.n_mal_samples}-{opt.n_feats}"  
+            f"_adv-{opt.adv_mode}-Over-{opt.n_good_samples}-{opt.n_mal_samples}-{opt.n_feats}"
+    elif opt.manipulation_algo != "":
+        model_variation = f"AT_{model_variation}_{opt.manipulation_algo}" +\
+                          f"_{opt.manipulation_degree}_{opt.step}_{opt.ATsize}_{opt.ATratio}"
 
     clf_path = os.path.join(
         model_base_path, f"pretrained/FFNN{model_variation}_classifier.pth")
@@ -107,6 +132,7 @@ if __name__ == "__main__":
         os.path.join(base_path, "../data/training_set.zip"))
     
     n_features = 1461078
+    vocab = None
     if f"{fs}.json" in os.listdir(os.path.join(base_path, f"selected_features/")):
         with open(os.path.join(base_path, f"selected_features/{fs}.json"), "r") as f:
             vocab = json.load(f)
@@ -130,22 +156,3 @@ if __name__ == "__main__":
 
     with open(os.path.join(base_path, submission_path),"w") as f:
         json.dump(results, f)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # testes meus
-    #i = 0
-    #for feature_tr in features_tr:
-    #    if i % 7500 == 0:
-    #        print(f"i = {i} -;-; feature_tr = {feature_tr}")
-    #    i += 1
-    #print(f"y_tr = {y_tr}; len(y_tr) = {len(y_tr)}")
-    #

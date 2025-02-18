@@ -26,13 +26,15 @@ def generate_adv_batch(attack, n_mal_samples, n_good_samples, n_feats):
         itertools.islice(malware_samples, n_mal_samples), 
         itertools.islice(goodware_samples, n_good_samples),
         n_iterations=100, n_features=n_feats, n_candidates=50)
-
+    
     adv_batch = list(itertools.islice(goodware_samples, n_good_samples)) + adv_examples
     labels = numpy.concatenate((numpy.zeros(n_good_samples), numpy.ones(n_mal_samples)))
     # Randomize positions so that the good to malware ratio is maintained during training.
-    adv_X, _, adv_y, _ = train_test_split(adv_batch, labels, test_size=None, 
-                                  train_size=n_good_samples + n_mal_samples-1,
-                                  random_state=42)
+    indices = numpy.arange(len(adv_batch))
+    numpy.random.shuffle(indices)
+    adv_X = [adv_batch[i] for i in indices]
+    adv_y = numpy.array([labels[i] for i in indices])
+
     return (adv_X, adv_y)
 
 def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATratio,
@@ -57,7 +59,7 @@ def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATrati
         print(f"shape of X_sliced: {X_sliced.shape}")
         print(f"shape of y_sliced: {y_sliced.shape}")
         # No need to transform, X_sliced already is encoded to a binary vector
-        classifier._fit(X_sliced, y_sliced)
+        #classifier._fit(X_sliced, y_sliced)
         adv_batch, adv_batch_labels = \
                 generate_adv_batch(attack, ATsize, ATratio*ATsize, n_feats)
         with open(adv_examples_path, "a") as f:
@@ -79,17 +81,59 @@ def main():
                         help="Size of AT iteration batch")
     parser.add_argument("-ATratio", type=int,
                         help="Ratio of good to malware samples of an AT iteration batch")
+    parser.add_argument("-feat_selection", choices=["Variance", "Univariate", "Recursive",
+                                                    "RecursiveCV", "SelectFromModel",
+                                                    "Sequential", ""],
+                        default="", type=str, required=False)
+    parser.add_argument("-param", default=-1.0, type=float, required=False,
+                        help="The parameter for feature selection")
+    parser.add_argument("-selection_type", choices=['percentile', 'k_best', 'fpr',
+                                                    'fdr', 'fwe', ''],
+                        default="",
+                        help="The type of selection for Univariate FS")
+    parser.add_argument("-selection_function", choices=['chi2', 'mutual_info_classif',
+                                                        'f_classif', ''],
+                        default="",
+                        help="The function used for Univariate FS")
+    parser.add_argument("-estimator", default="",
+                        help="The estimator used for Recursive FS")
+    parser.add_argument("-direction", choices=["forward", "backward", ""],
+                        default="", help="Direction of Sequential FS")
     opt = parser.parse_args()
     print(f"Input arguments to the program:\n\
-            classifier: {opt.classifier}\n\
-            manipulation_algo : {opt.manipulation_algo}\n\
-            manipulation_degree : {opt.manipulation_degree}\n\
-            step: {opt.step}\n\
-            ATsize : {opt.ATsize}\n\
-            ATratio : {opt.ATratio}")
+            Adversarial Training parameters:\n\
+                classifier: {opt.classifier}\n\
+                manipulation_algo : {opt.manipulation_algo}\n\
+                manipulation_degree : {opt.manipulation_degree}\n\
+                step: {opt.step}\n\
+                ATsize : {opt.ATsize}\n\
+                ATratio : {opt.ATratio}\n\
+            Feature Selection parameters:\n\
+                feature_selection: {opt.feat_selection}\n\
+                param: {opt.param}\n\
+                selection_type: {opt.selection_type}\n\
+                selection_function: {opt.selection_function}\n\
+                estimator: {opt.estimator}\n\
+                direction: {opt.direction}")
 
-    model_string = f"AT_{opt.classifier}_{opt.manipulation_algo}" +\
+    AT_string = f"AT_{opt.classifier}_{opt.manipulation_algo}" +\
                    f"_{opt.manipulation_degree}_{opt.step}_{opt.ATsize}_{opt.ATratio}"
+    param_str = str(opt.param).replace('.', '') if opt.param < 1 else int(opt.param)
+    fs = ""
+    if opt.feat_selection != "":
+        fs += f"{opt.feat_selection}FS"
+        if opt.feat_selection == "Variance":
+            fs += f"-{param_str}"
+        elif opt.feat_selection == "Univariate":
+            fs += f"-{opt.selection_type}-{opt.selection_function}-{param_str}"
+        elif opt.feat_selection in ("Recursive", "RecursiveCV"):
+            fs += f"-{opt.estimator}-{param_str}"
+        elif opt.feat_selection == "SelectFromModel":
+            model_variation += f"-{opt.estimator}-{param_str}"
+        elif opt.feat_selection == "Sequential":
+            model_variation += f"-{opt.estimator}-{opt.direction}-{param_str}"
+    model_string = f"{AT_string}_{fs}"
+
     adv_examples_path = os.path.join(base_path, f"adv_examples_for_AT/{model_string}.json")
     clf_path = os.path.join(model_base_path, "pretrained/" +
                             model_string + "_classifier" +
@@ -103,11 +147,19 @@ def main():
     print(f"adv_examples_path:\n{adv_examples_path}")
     print(f"submission_path:\n{submission_path}")
 
-    classifier, _, _ = parse_model(opt.classifier)
+    n_features = 1461078
+    vocab = None
+    if f"{fs}.json" in os.listdir(os.path.join(base_path, f"selected_features/")):
+        with open(os.path.join(base_path, f"selected_features/{fs}.json"), "r") as f:
+            vocab = json.load(f)
+            n_features = len(vocab)
+
+    classifier, _, _ = parse_model(opt.classifier, n_features, vocab)
+    
+    min_thresh = 0 if ("drebin" in opt.classifier or
+                           "secsvm" in opt.classifier) else 0.5
     
     if opt.manipulation_algo == "genetic":
-        min_thresh = 0 if ("drebin" in opt.classifier or
-                           "secsvm" in opt.classifier) else 0.5 
         attack = FeatureSpaceAttack(classifier=classifier,
                                     best_fitness_min_thresh=min_thresh,
                                     logging_level=logging.INFO)
@@ -126,7 +178,7 @@ def main():
                          opt.step, opt.ATsize, opt.ATratio, adv_examples_path)
         classifier.save(clf_path, vect_path)
     
-    results = evaluate(classifier, min_thresh=0)
+    results = evaluate(classifier, min_thresh=min_thresh)
 
     with open(os.path.join(base_path, submission_path), "w") as f:
         json.dump(results, f)

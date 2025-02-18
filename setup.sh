@@ -58,4 +58,9 @@ python track_1/FFNN_track_1.py -training normal -structure small -use_CEL True -
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------
 # Adversarial Training
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------
-python track_1/adv_training.py -classifier FFNN_normal_small_CEL0109_ -manipulation_algo genetic -manipulation_degree 1 -step 37500 -ATsize 10 -ATratio 9 
+python track_1/adv_training.py -classifier FFNN_normal_small_CEL0109_ -manipulation_algo genetic -manipulation_degree 1 -step 37500 -ATsize 10 -ATratio 9
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------
+# Adversarial Training + Feature Selection
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------
+python track_1/adv_training.py -classifier FFNN_normal_small_CEL0109_ -manipulation_algo genetic -manipulation_degree 5 -step 3000 -ATsize 100 -ATratio 9 -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 10000

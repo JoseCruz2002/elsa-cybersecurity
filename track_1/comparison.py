@@ -19,7 +19,27 @@ TEST_BIG_2 = "feature_space_attack_20"
 TEST_BIG_3 = "feature_space_attack_25"
 
 color_map = {
+    "drebin_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#1f77b4",
+    "drebin_UnivariateFS-percentile-chi2-1_track_1": "#aec7e8",
+    "drebin_UnivariateFS-percentile-f_classif-1_track_1": "#ff7f0e",
+    "drebin_UnivariateFS-percentile-chi2-10_track_1": "#ffbb78",
+    "drebin_VarianceFS-099_track_1": "#2ca02c",
+    "drebin_VarianceFS-095_track_1": "#98df8a",
+    "drebin_UnivariateFS-percentile-mutual_info_classif-60_track_1": "#d62728",
+    "drebin_UnivariateFS-k_best-f_classif-10000_track_1": "#ff9896",
+    "drebin_VarianceFS-09_track_1": "#9467bd",
+    "drebin_UnivariateFS-k_best-chi2-100000_track_1": "#c5b0d5",
+    "drebin_VarianceFS-04_track_1": "#8c564b",
+    "drebin_UnivariateFS-k_best-chi2-10000_track_1": "#c49c94",
+    "drebin_UnivariateFS-percentile-f_classif-60_track_1": "#e377c2",
+    "drebin_VarianceFS-08_track_1": "#f7b6d2",
+    "drebin_SelectFromModelFS-TreeEnsemble-10000_track_1": "#7f7f7f",
+    "drebin_UnivariateFS-percentile-chi2-60_track_1": "#c7c7c7",
+    "drebin_UnivariateFS-k_best-chi2-100_track_1": "#bcbd22",
     "drebin_track_1": "#3357FF",
+    "secsvm_track_1": "#33FFF6",
+    "MLP_SKLearn_track_1": "#FFAA33",
+    "FFNN_normal_small_CEL012088__track_1": "#dbdb8d",
     "FFNN_normal_big___track_1": "#33FF85",
     "FFNN_normal_big__dense_track_1": "#FF5733",
     "FFNN_normal_big_CEL0109__track_1": "#FF33A8",
@@ -28,6 +48,9 @@ color_map = {
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-5_track_1": "#4F0691",
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_v1_track_1": "#8902AD",
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_track_1": "#00A2FF",
+    "FFNN_normal_small_CEL0109__UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#17becf",
+    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_track_1": "#9edae5",
+    "FFNN_normal_small_CEL015085__track_1": "#9edae5",
     "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
     "FFNN_normal_small_CEL0109__track_1": "#A833FF",
     "FFNN_normal_small_CEL0109_dense_track_1": "#FF3333",
@@ -36,13 +59,22 @@ color_map = {
     "FFNN_normal_small_CEL0208__adv-genetic-Over-10000-1000-10_track_1": "#421608",
     "FFNN_ratioed_big___track_1": "#33FF57",
     "FFNN_ratioed_big__dense_track_1": "#33A8FF",
-    "FFNN_ratioed_small__dense_track_1": "#85FF33",
-    "MLP_SKLearn_track_1": "#FFAA33",
-    "secsvm_track_1": "#33FFF6",
-    #"FFNN_dropout_track_1": "#FFD133",
-    #"FFNN_softmax_fix_track_1": "#33FF33",
-    #"FFNN_only_mal_track_1": "#3333FF",
+    "FFNN_ratioed_small__dense_track_1": "#85FF33"
 }
+
+def new_colors():
+    missing_keys = [key for key, value in color_map.items() if value is None]
+    cmap = plt.get_cmap("tab20")
+    new_colors = [cmap(i) for i in range(len(missing_keys))]
+    def rgb_to_hex(rgb):
+        return "#{:02x}{:02x}{:02x}".format(
+            int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255)
+        )
+    new_hex_colors = [rgb_to_hex(color[:3]) for color in new_colors]
+    for key, color in zip(missing_keys, new_hex_colors):
+        color_map[key] = color
+    for (key, value) in color_map.items():
+        print(f"\"{key}\": \"{value}\"")
 
 def submission_tests():
     submission_path = os.path.join(os.path.dirname(__file__), "submissions/submission_drebin_track_1.json")
@@ -106,7 +138,6 @@ def join_all_submissions():
     submissions_path = os.path.join(os.path.dirname(__file__), "submissions/")
 
     all_subs = {}
-    filenames = os.listdir(submissions_path).sort()
     for filename in os.listdir(submissions_path):
         if filename in (".gitkeep", "not_relevant", "before_pred_and_fsa_correct")\
                     or "pretty" in filename:
@@ -411,7 +442,7 @@ def create_no_attack_F1_measures(metrics):
     plt.ylabel("Name of the model")
     plt.xlabel("F1-Measure")
 
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(f"{plots_path}no_attack_f1-measure_comparison_bar.png", 
                 dpi=300, bbox_inches="tight")
     plt.close()
@@ -444,6 +475,33 @@ def create_big_attack_unique_bar_plot(metrics):
     plt.close()
 
 
+def create_attack_unique_bar_plot_only_drebin(metrics):
+
+    plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
+
+    categories = ["no_atck", "fsa_2", "fsa_5", "fsa_10"]
+    bar_width = 0.5
+
+    results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_5)
+    results = list(filter(lambda x: "drebin" in x[0], results))
+    
+    fig, ax = plt.subplots()
+    for (name, values) in results:
+        ax.bar(categories, values, bar_width, label=name, bottom=0, color=color_map[name])
+
+    ax.legend(bbox_to_anchor=(1.05, 1))
+    ax.set_ylim(0, 1)
+
+    ax.set_title("Feature_Space_Attacks accuracy comparison")
+    ax.set_xlabel("Number of features attacked")
+    ax.set_ylabel("Accuracy")
+
+    #plt.tight_layout()
+    plt.savefig(f"{plots_path}drebin_FS_feature_space_attack_results_comparison_bar.png", 
+                dpi=300, bbox_inches="tight")
+    plt.close()
+
+
 if __name__ == "__main__":
     #submission_tests()
     #comparison_tests()
@@ -451,16 +509,16 @@ if __name__ == "__main__":
 
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
-
     for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
         print(f"{name}: {''.join(list(' ' for _ in range(70-len(name))))} {values}")
-
-
+    
     #create_no_attack_confusion_matrices(metrics)
     #create_no_attack_scatter_plot(metrics)
-    #create_no_attack_F1_measures(metrics)
-#
+    create_no_attack_F1_measures(metrics)
+    #
     #create_attack_confusion_matrices(metrics)
     #create_attack_bar_plots(metrics)
     #create_attack_unique_bar_plot(metrics)
     #create_big_attack_unique_bar_plot(metrics)
+
+    create_attack_unique_bar_plot_only_drebin(metrics)

@@ -40,9 +40,9 @@ def data_augmentation_over_existing_model(classifier, adv_samples, adv_mode, n_g
                                      n_mal_samples, n_feats):
 
     labels = numpy.concatenate((numpy.zeros(n_good_samples), numpy.ones(n_mal_samples)))
-    X, _, y, _ = train_test_split(adv_samples, labels, test_size=None, 
-                                  train_size=n_good_samples + n_mal_samples-1,
-                                  random_state=42)
+    indices = numpy.arange(len(labels))
+    numpy.random.shuffle(indices)
+    X, y = adv_samples[indices], labels[indices]
     classifier.fit(X, y, fit=False)
     
     aux_name = classifier.toString() + f"_adv-{adv_mode}-Over-{n_good_samples}-{n_mal_samples}-{n_feats}"
