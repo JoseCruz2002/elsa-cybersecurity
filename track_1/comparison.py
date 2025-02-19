@@ -50,6 +50,7 @@ color_map = {
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_track_1": "#00A2FF",
     "FFNN_normal_small_CEL0109__UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#17becf",
     "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_track_1": "#9edae5",
+    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#234120" ,
     "FFNN_normal_small_CEL015085__track_1": "#9edae5",
     "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
     "FFNN_normal_small_CEL0109__track_1": "#A833FF",
@@ -59,7 +60,7 @@ color_map = {
     "FFNN_normal_small_CEL0208__adv-genetic-Over-10000-1000-10_track_1": "#421608",
     "FFNN_ratioed_big___track_1": "#33FF57",
     "FFNN_ratioed_big__dense_track_1": "#33A8FF",
-    "FFNN_ratioed_small__dense_track_1": "#85FF33"
+    "FFNN_ratioed_small__dense_track_1": "#85FF33",
 }
 
 def new_colors():
@@ -475,7 +476,7 @@ def create_big_attack_unique_bar_plot(metrics):
     plt.close()
 
 
-def create_attack_unique_bar_plot_only_drebin(metrics):
+def create_attack_unique_bar_plot_only_NAME(metrics, model_name):
 
     plots_path = os.path.join(os.path.dirname(__file__), "results/plots/")
 
@@ -483,7 +484,7 @@ def create_attack_unique_bar_plot_only_drebin(metrics):
     bar_width = 0.5
 
     results = order_models_robustness(metrics, reverse=True, test_to_order_by=TEST_5)
-    results = list(filter(lambda x: "drebin" in x[0], results))
+    results = list(filter(lambda x: model_name in x[0], results))
     
     fig, ax = plt.subplots()
     for (name, values) in results:
@@ -497,7 +498,7 @@ def create_attack_unique_bar_plot_only_drebin(metrics):
     ax.set_ylabel("Accuracy")
 
     #plt.tight_layout()
-    plt.savefig(f"{plots_path}drebin_FS_feature_space_attack_results_comparison_bar.png", 
+    plt.savefig(f"{plots_path}{model_name}_FS_feature_space_attack_results_comparison_bar.png", 
                 dpi=300, bbox_inches="tight")
     plt.close()
 
@@ -512,13 +513,14 @@ if __name__ == "__main__":
     for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
         print(f"{name}: {''.join(list(' ' for _ in range(70-len(name))))} {values}")
     
-    #create_no_attack_confusion_matrices(metrics)
-    #create_no_attack_scatter_plot(metrics)
+    create_no_attack_confusion_matrices(metrics)
+    create_no_attack_scatter_plot(metrics)
     create_no_attack_F1_measures(metrics)
-    #
-    #create_attack_confusion_matrices(metrics)
-    #create_attack_bar_plots(metrics)
-    #create_attack_unique_bar_plot(metrics)
-    #create_big_attack_unique_bar_plot(metrics)
+    
+    create_attack_confusion_matrices(metrics)
+    create_attack_bar_plots(metrics)
+    create_attack_unique_bar_plot(metrics)
+    create_big_attack_unique_bar_plot(metrics)
 
-    create_attack_unique_bar_plot_only_drebin(metrics)
+    create_attack_unique_bar_plot_only_NAME(metrics, "drebin")
+    create_attack_unique_bar_plot_only_NAME(metrics, "FFNN")
