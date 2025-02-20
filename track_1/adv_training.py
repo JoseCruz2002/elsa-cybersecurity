@@ -37,7 +37,7 @@ def generate_adv_batch(attack, n_mal_samples, n_good_samples, n_feats):
     return (adv_X, adv_y)
 
 def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATratio,
-                         adv_examples_path):
+                         adv_examples_path, do_RS, noise):
     """
     Perform the adversarial training.
     Arguments:
@@ -58,13 +58,14 @@ def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATrati
         print(f"shape of X_sliced: {X_sliced.shape}")
         print(f"shape of y_sliced: {y_sliced.shape}")
         # No need to transform, X_sliced already is encoded to a binary vector
-        classifier._fit(X_sliced, y_sliced)
+        classifier._fit(X_sliced, y_sliced, do_RS, noise)
         adv_batch, adv_batch_labels = \
                 generate_adv_batch(attack, ATsize, ATratio*ATsize, n_feats)
         with open(adv_examples_path, "a") as f:
             json.dump({i: adv_batch}, f, indent=2)
         # The vectorizer has already been fitted, still need to encode the samples
-        classifier.fit(adv_batch, adv_batch_labels, fit=False)
+        classifier.fit(adv_batch, adv_batch_labels, fit=False,
+                       rand_smoothing=do_RS, noise=noise)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,6 +82,9 @@ def main():
                         help="Size of AT iteration batch")
     parser.add_argument("-ATratio", type=int,
                         help="Ratio of good to malware samples of an AT iteration batch")
+    # Randomized Smoothing parameters
+    parser.add_argument("-noise", type=float, default=-1.0,
+                        help="The standart deviation of the gaussian noise")
     # Feature Selection parameters
     parser.add_argument("-feat_selection", choices=["Variance", "Univariate", "Recursive",
                                                     "RecursiveCV", "SelectFromModel",
@@ -109,6 +113,8 @@ def main():
                 step: {opt.step}\n\
                 ATsize : {opt.ATsize}\n\
                 ATratio : {opt.ATratio}\n\
+            Randomized Smoothing parameters:\n\
+                noise: {opt.noise}\n\
             Feature Selection parameters:\n\
                 feature_selection: {opt.feat_selection}\n\
                 param: {opt.param}\n\
@@ -133,7 +139,13 @@ def main():
             model_variation += f"-{opt.estimator}-{param_str}"
         elif opt.feat_selection == "Sequential":
             model_variation += f"-{opt.estimator}-{opt.direction}-{param_str}"
-    model_string = f"{AT_string}_{fs}"
+    RS_string = ""
+    do_RS = False
+    if opt.noise > 0.0:
+        RS_string = f"RS_{str(opt.noise).replace('.', '')}"
+        do_RS = True
+    model_string = f"{AT_string}_{RS_string}_{fs}"
+    
 
     adv_examples_path = os.path.join(base_path, f"adv_examples_for_AT/{model_string}.json")
     clf_path = os.path.join(model_base_path, "pretrained/" +
@@ -175,8 +187,9 @@ def main():
         y_tr = load_labels(
             os.path.join(base_path, "../data/training_set_features.zip"),
             os.path.join(base_path, "../data/training_set.zip"))
-        adversarial_training(features_tr, y_tr, classifier, attack, opt.manipulation_degree,
-                         opt.step, opt.ATsize, opt.ATratio, adv_examples_path)
+        adversarial_training(features_tr, y_tr, classifier, attack,
+                             opt.manipulation_degree, opt.step, opt.ATsize,
+                             opt.ATratio, adv_examples_path, do_RS, opt.noise)
         classifier.save(clf_path, vect_path)
     
     results = evaluate(classifier, min_thresh=min_thresh)

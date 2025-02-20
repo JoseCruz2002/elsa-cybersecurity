@@ -66,8 +66,13 @@ python track_1/adv_training.py -classifier FFNN_normal_small_CEL0109_ -manipulat
 python track_1/adv_training.py -classifier FFNN_normal_small_CEL0109_ -manipulation_algo genetic -manipulation_degree 5 -step 3000 -ATsize 100 -ATratio 9 -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 10000
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------
-# Randomized Smoothing
+# Randomized Smoothing (+ FS)
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------
 python track_1/rand_smoothing.py -classifier FFNN_normal_small_CEL0109_ -noise 0.15
 python track_1/rand_smoothing.py -classifier FFNN_normal_small_CEL0109_ -noise 0.15 -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 10000
 python track_1/rand_smoothing.py -classifier FFNN_normal_small_CEL0109_dense -noise 0.15 -feat_selection Variance -param 0.4
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------
+# Adversarial Training + Randomized Smoothing
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------
+python track_1/adv_training.py -
