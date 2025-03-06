@@ -49,8 +49,15 @@ color_map = {
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_v1_track_1": "#8902AD",
     "FFNN_normal_small_CEL0109__adv-genetic-Over-10000-1000-10_track_1": "#00A2FF",
     "FFNN_normal_small_CEL0109__UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#17becf",
-    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_track_1": "#9edae5",
-    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#234120" ,
+    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9__track_1": "#9edae5",
+    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#234120",
+    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_100_9_RS_001__track_1": "#1f77b4",
+    "AT_FFNN_normal_small_CEL0109__genetic_5_3000_1000_9__UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#aec7e8",
+    "RS_FFNN_normal_small_CEL0109__001__track_1": "#1f77b4",
+    "RS_FFNN_normal_small_CEL0109__003__track_1": "#aec7e8",
+    "RS_FFNN_normal_small_CEL0109__005__track_1": "#ff7f0e",
+    "RS_FFNN_normal_small_CEL0109__005_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#ffbb78",
+    "RS_FFNN_normal_small_CEL0109__015__track_1": "#2ca02c",
     "FFNN_normal_small_CEL015085__track_1": "#9edae5",
     "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
     "FFNN_normal_small_CEL0109__track_1": "#A833FF",
@@ -60,7 +67,7 @@ color_map = {
     "FFNN_normal_small_CEL0208__adv-genetic-Over-10000-1000-10_track_1": "#421608",
     "FFNN_ratioed_big___track_1": "#33FF57",
     "FFNN_ratioed_big__dense_track_1": "#33A8FF",
-    "FFNN_ratioed_small__dense_track_1": "#85FF33",
+    "FFNN_ratioed_small__dense_track_1": "#85FF33"
 }
 
 def new_colors():
@@ -435,9 +442,11 @@ def create_no_attack_F1_measures(metrics):
     values = dict((name, F1_Measure(model[TEST_JOIN])) for (name, model) in metrics.items())
     values = dict(sorted(values.items(), key=lambda kv: kv[1]))
 
+    plt.figure(figsize=(10, 15))
     bars = plt.barh(list(values.keys()), list(values.values()))
     plt.bar_label(bars)
     plt.xlim(0, 1)
+    
 
     plt.title("No_Attack F1-Measure comparison")
     plt.ylabel("Name of the model")
@@ -507,20 +516,21 @@ if __name__ == "__main__":
     #submission_tests()
     #comparison_tests()
     #scores_test("FFNN_normal_small_CEL0109__track_1")
+    #new_colors()
 
     all_subs = join_all_submissions()
     metrics = calculate_metrics(all_subs)
     for (name, values) in order_models_robustness(metrics, test_to_order_by=TEST_5, remove_big_tests=False):
-        print(f"{name}: {''.join(list(' ' for _ in range(70-len(name))))} {values}")
+        print(f"{name}: {''.join(list(' ' for _ in range(105-len(name))))} {values}")
     
-    create_no_attack_confusion_matrices(metrics)
+    #create_no_attack_confusion_matrices(metrics)
     create_no_attack_scatter_plot(metrics)
     create_no_attack_F1_measures(metrics)
-    
-    create_attack_confusion_matrices(metrics)
-    create_attack_bar_plots(metrics)
-    create_attack_unique_bar_plot(metrics)
-    create_big_attack_unique_bar_plot(metrics)
 
-    create_attack_unique_bar_plot_only_NAME(metrics, "drebin")
+    #create_attack_confusion_matrices(metrics)
+    #create_attack_bar_plots(metrics)
+    create_attack_unique_bar_plot(metrics)
+    #create_big_attack_unique_bar_plot(metrics)
+
+    #create_attack_unique_bar_plot_only_NAME(metrics, "drebin")
     create_attack_unique_bar_plot_only_NAME(metrics, "FFNN")

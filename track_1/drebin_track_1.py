@@ -83,6 +83,7 @@ if __name__ == "__main__":
             f"_adv-{opt.adv_mode}-Over-{opt.n_good_samples}-{opt.n_mal_samples}-{opt.n_feats}"  
 
     clf_path = os.path.join(
+        # MUDAR PARA .pkl!!!!!!!!!!!!!!!!!!!
         model_base_path, f"pretrained/drebin{model_variation}_classifier.pth")
     vect_path = os.path.join(
         model_base_path, f"pretrained/drebin{model_variation}_vectorizer.pkl")

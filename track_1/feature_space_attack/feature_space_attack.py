@@ -5,7 +5,7 @@ from copy import deepcopy
 import numpy as np
 import scipy as sp
 from sklearn.feature_extraction.text import CountVectorizer
-
+from sortedcontainers import SortedList
 
 class Feature:
     def __init__(self, add, remove):
@@ -65,6 +65,9 @@ class FeatureSpaceAttack:
         self._n_features = None
         self._n_candidates = None
         self._stagnation = None
+
+        # Features
+        self.possible_manipulations = {}
 
     def run(self, malware_features, goodware_features, n_iterations=100,
             n_features=5, n_candidates=5, stagnation=5, seed=0):
@@ -213,15 +216,37 @@ class FeatureSpaceAttack:
         manipulation_space = set()
         for feature in malware_features:
             # malware has feature and removal is feasible
-            if DREBIN_FEATURES[feature.split("::")[0]].remove:
-                manipulation_space.add(
-                    -(self.clf.input_features.index(feature)+1))
+            if (DREBIN_FEATURES[feature.split("::")[0]].remove and
+                self.feat_possible_manipulate(feature)):
+                manipulation_space.add(-(self.clf.input_features.index(feature)+1))
+        # candidate features come from goodware samples
         candidate_features = np.unique(np.array(self._pop))
         for i in candidate_features:
-            if DREBIN_FEATURES[
-              self.clf.input_features[i-1].split("::")[0]].add:
+            if (DREBIN_FEATURES[self.clf.input_features[i-1].split("::")[0]].add and
+                self.feat_possible_manipulate(self.clf.input_features[i-1])):
                 manipulation_space.add(i)
         return manipulation_space
+    
+    def set_possible_manipulations(self, poss_manipulations: dict[SortedList[str]]):
+        """
+        Sets the features that can be manipulated by name
+        Parameters
+        ----------
+        poss_manipulations : dictionary of SortedList of string
+            Textual features that are allowed to be changed
+        """
+        self.possible_manipulations = poss_manipulations
+
+    def feat_possible_manipulate(self, feature):
+        """
+        Checks whether a certain feature is or is not in the possible
+        manipulation space.
+        If the possible manipualtion space is empty then it returns True.
+        """
+        if self.possible_manipulations:
+            key, value = feature.split("::")
+            return value in self.possible_manipulations[key]
+        return True
 
     def _init_attack(self, goodware_features):
         """Prepares the population and the functions used by the

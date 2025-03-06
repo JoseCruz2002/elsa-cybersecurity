@@ -10,14 +10,80 @@ from evaluation import evaluate
 import models
 from models.utils import *
 import torch
+import random
+import time
+
+class Feature:
+    def __init__(self, add, remove):
+        self.add = add
+        self.remove = remove
+
+
+DREBIN_FEATURES = {
+    "req_permissions": Feature(True, False),
+    "activities": Feature(True, True),
+    "services": Feature(True, True),
+    "providers": Feature(True, True),
+    "receivers": Feature(True, True),
+    "features": Feature(True, False),
+    "intent_filters": Feature(True, False),
+    "used_permissions": Feature(True, False),
+    "api_calls": Feature(True, True),
+    "suspicious_calls": Feature(True, True),
+    "urls": Feature(True, True)
+}
+
+RS_BATCH = 5000
+
+def RS_sample_modification(sample, noise, input_features):
+    if len(sample) == 0:
+        print("Sample's length is zero.")
+        return sample
+    n_modifications = 0
+    while n_modifications != noise:
+        decision = random.randint(1, 2)
+        if decision == 1:
+            # Remove a feature
+            idx = random.randint(0, len(sample)-1)
+            feature = sample[idx]
+            removable = DREBIN_FEATURES[feature.split("::")[0]].remove
+            if removable:
+                sample.remove(feature)
+                n_modifications += 1
+        else:
+            # Add a feature
+            idx = random.randint(0, len(input_features)-1)
+            feature = input_features[idx]
+            addable = DREBIN_FEATURES[feature.split("::")[0]].add
+            if feature not in sample and addable:
+                sample.append(feature)
+                n_modifications += 1
+    return sample
+
+def perform_RS(classifier, X, y, noise, RS_samples_path):
+    X_aux, X = itertools.tee(X, 2)
+    classifier.vectorizer_fit(X, transform=False)
+    X_aux = list(X_aux)
+    for i in range(75000//RS_BATCH):
+        X_batch = X_aux[i*RS_BATCH : (i+1)*RS_BATCH]
+        y_batch = y[i*RS_BATCH : (i+1)*RS_BATCH]
+        print(f"LENNNNNS: {len(X_batch)};;; {y_batch.shape}")
+        time.sleep(1)
+        for j in range(len(X_batch)):
+            #print(f"j: {j}; sample: {X_batch[j]}")
+            X_batch[j] = RS_sample_modification(X_batch[j], noise,
+                                                classifier.input_features)
+        #with open(RS_samples_path, "a") as f:
+        #    json.dump(X_batch, f, indent=2)
+        classifier.fit(X_batch, y_batch, fit=False)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-classifier",
-                        help="The model on which to perform adversarial training")
+                        help="The model on which to perform randomized smoothing")
     # Randomized Smoothing parameters
-    parser.add_argument("-noise", type=float, default=0.25,
-                        help="The standart deviation of the gaussian noise")
+    parser.add_argument("-noise", type=int, default=2,
+                        help="The number of features to change")
     # Feature Selection parameters
     parser.add_argument("-feat_selection", choices=["Variance", "Univariate", "Recursive",
                                                     "RecursiveCV", "SelectFromModel",
@@ -50,7 +116,7 @@ def main():
                 estimator: {opt.estimator}\n\
                 direction: {opt.direction}")
 
-    RS_string = f"RS_{opt.classifier}_{str(opt.noise).replace('.', '')}"
+    RS_string = f"RSv2_{opt.classifier}_{str(opt.noise).replace('.', '')}"
     param_str = str(opt.param).replace('.', '') if opt.param < 1 else int(opt.param)
     fs = ""
     if opt.feat_selection != "":
@@ -67,6 +133,7 @@ def main():
             model_variation += f"-{opt.estimator}-{opt.direction}-{param_str}"
     model_string = f"{RS_string}_{fs}"
 
+    RS_samples_path = os.path.join(base_path, f"RS_samples/{model_string}.json")
     clf_path = os.path.join(model_base_path, "pretrained/" +
                             model_string + "_classifier" +
                             (".pth" if "FFNN" in opt.classifier else ".pkl"))
@@ -74,9 +141,10 @@ def main():
                              model_string + "_vectorizer.pkl")
     submission_path = f"submissions/submission_{model_string}_track_1.json"
     
-    print(f"classifier_path:\n{clf_path}")
-    print(f"vectorizer_path:\n{vect_path}")
-    print(f"submission_path:\n{submission_path}")
+    print(f"RS_sample_path:\n {RS_samples_path}")
+    print(f"classifier_path:\n {clf_path}")
+    print(f"vectorizer_path:\n {vect_path}")
+    print(f"submission_path:\n {submission_path}")
 
     n_features = 1461078
     vocab = None
@@ -85,7 +153,7 @@ def main():
             vocab = json.load(f)
             n_features = len(vocab)
 
-    classifier, _, _ = parse_model(opt.classifier, n_features, vocab)
+    classifier, _, _ = parse_model(opt.classifier, n_features, vocab, use_RS=True)
     
     min_thresh = 0 if ("drebin" in opt.classifier or
                        "secsvm" in opt.classifier) else 0.5
@@ -99,7 +167,7 @@ def main():
         y_tr = load_labels(
             os.path.join(base_path, "../data/training_set_features.zip"),
             os.path.join(base_path, "../data/training_set.zip"))
-        classifier.fit(features_tr, y_tr, rand_smoothing=True, noise=opt.noise)
+        perform_RS(classifier, features_tr, y_tr, opt.noise, RS_samples_path)
         classifier.save(clf_path, vect_path)
 
     results = evaluate(classifier, min_thresh=min_thresh)

@@ -37,7 +37,7 @@ def generate_adv_batch(attack, n_mal_samples, n_good_samples, n_feats):
     return (adv_X, adv_y)
 
 def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATratio,
-                         adv_examples_path, do_RS, noise):
+                         adv_examples_path):
     """
     Perform the adversarial training.
     Arguments:
@@ -58,14 +58,13 @@ def adversarial_training(X, y, classifier, attack, n_feats, step, ATsize, ATrati
         print(f"shape of X_sliced: {X_sliced.shape}")
         print(f"shape of y_sliced: {y_sliced.shape}")
         # No need to transform, X_sliced already is encoded to a binary vector
-        classifier._fit(X_sliced, y_sliced, do_RS, noise)
+        classifier._fit(X_sliced, y_sliced)
         adv_batch, adv_batch_labels = \
                 generate_adv_batch(attack, ATsize, ATratio*ATsize, n_feats)
         with open(adv_examples_path, "a") as f:
             json.dump({i: adv_batch}, f, indent=2)
         # The vectorizer has already been fitted, still need to encode the samples
-        classifier.fit(adv_batch, adv_batch_labels, fit=False,
-                       rand_smoothing=do_RS, noise=noise)
+        classifier.fit(adv_batch, adv_batch_labels, fit=False)
 
 def main():
     parser = argparse.ArgumentParser()

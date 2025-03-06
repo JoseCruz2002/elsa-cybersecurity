@@ -76,7 +76,7 @@ if __name__ == "__main__":
                 n_feats: {opt.n_feats}\n\
                 n_good_samples: {opt.n_good_samples}\n\
                 n_mal_samples: {opt.n_mal_samples}\n\
-            Adversarial Training parameters:
+            Adversarial Training parameters:\n\
                 manipulation_algo : {opt.manipulation_algo}\n\
                 manipulation_degree : {opt.manipulation_degree}\n\
                 step: {opt.step}\n\
@@ -137,6 +137,8 @@ if __name__ == "__main__":
         with open(os.path.join(base_path, f"selected_features/{fs}.json"), "r") as f:
             vocab = json.load(f)
             n_features = len(vocab)
+    elif fs != "":
+        raise ValueError("Need an already selected set of features!")
 
     classifier = FFNN(training=opt.training, structure=opt.structure, use_CEL=opt.use_CEL,
                       CEL_weight_pos_class=opt.CEL_weight_pos_class, 
