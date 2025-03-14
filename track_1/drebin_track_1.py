@@ -105,7 +105,7 @@ if __name__ == "__main__":
             os.path.join(base_path, "../data/training_set_features.zip"),
             os.path.join(base_path, "../data/training_set.zip"))
         if opt.feat_selection != "":
-            classifier.fit(features_tr, y_tr, feat_sel=True, args=feat_selection_args)
+            classifier.fit(features_tr, y_tr, feat_sel=True, FS_args=feat_selection_args)
             with open(os.path.join(base_path, 
                                    f"selected_features/{model_variation[1:]}.json"), "w") as f:
                 json.dump(classifier.input_features, f, indent=2)

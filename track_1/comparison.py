@@ -58,6 +58,8 @@ color_map = {
     "RS_FFNN_normal_small_CEL0109__005__track_1": "#ff7f0e",
     "RS_FFNN_normal_small_CEL0109__005_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#ffbb78",
     "RS_FFNN_normal_small_CEL0109__015__track_1": "#2ca02c",
+    "RSv2_FFNN_normal_small_CEL0109__2_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#facd41",
+    "RSv2_FFNN_normal_small_CEL0109__5_UnivariateFS-k_best-mutual_info_classif-10000_track_1": "#af0941",
     "FFNN_normal_small_CEL015085__track_1": "#9edae5",
     "FFNN_normal_small_CEL0109__fsa_fix_track_1": "#C9E2AF",
     "FFNN_normal_small_CEL0109__track_1": "#A833FF",

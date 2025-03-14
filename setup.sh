@@ -39,6 +39,9 @@ python track_1/drebin_track_1.py -feat_selection Variance -p 0.4
 
 python track_1/drebin_track_1.py -feat_selection Univariate -selection_type k_best -selection_function chi2 -param 1000
 python track_1/drebin_track_1.py -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 10000
+python track_1/drebin_track_1.py -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 500
+python track_1/drebin_track_1.py -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 1000
+python track_1/drebin_track_1.py -feat_selection Univariate -selection_type k_best -selection_function mutual_info_classif -param 2000
 python track_1/drebin_track_1.py -feat_selection Univariate -selection_type k_best -selection_function f_classif -param 10000
 python track_1/drebin_track_1.py -feat_selection Univariate -selection_type percentile -selection_function chi2 -param 60
 python track_1/drebin_track_1.py -feat_selection Univariate -selection_type percentile -selection_function mutual_info_classif -param 60
